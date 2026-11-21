@@ -18,32 +18,36 @@ try {
   const page = await app.firstWindow()
   page.on('pageerror', (e) => console.error('renderer:', e.message))
   page.setDefaultTimeout(20000)
-  await page.getByRole('button', { name: /Sample invoice/ }).waitFor()
+  const create = page.getByRole('button', { name: 'New spreadsheet', exact: true })
+  await create.waitFor()
   assert.equal(await page.locator('html').getAttribute('lang'), 'en')
-  assert.equal(
-    await page.getByRole('button', { name: /favorites|local model/i }).count(),
-    0,
-  )
-  const search = page.getByRole('searchbox', {
-    name: 'Search documents by name',
-  })
+  assert.doesNotMatch(await page.locator('main').innerText(), /Templates|On this Mac|Sample invoice/i)
+  await create.click()
+  const title = page.getByRole('textbox', { name: 'Document name' })
+  await title.fill('Quarterly invoices')
+  await title.press('Enter')
+  await page.getByRole('heading', { name: 'Invoicity', exact: true }).waitFor()
+  assert.doesNotMatch(await page.locator('.editorTop').innerText(), /saved|saving/i)
+  await page.screenshot({ path: path.join(temp, 'editor.png') })
+  await page.getByRole('button', { name: 'Back to documents' }).click()
+  const search = page.getByRole('searchbox', { name: 'Search documents by name' })
+  await search.waitFor()
   await page.keyboard.press('Meta+k')
   assert.ok(await search.evaluate((el) => el === document.activeElement))
-  await search.fill('  SaMpLe  ')
-  await page.getByRole('button', { name: /Sample invoice/ }).waitFor()
+  await search.fill('  QUARTERLY  ')
+  await page.getByRole('button', { name: 'Quarterly invoices' }).waitFor()
   await search.fill('no matching name')
   await page.getByText('No matching documents.').waitFor()
   await page.getByRole('button', { name: 'Clear search' }).click()
   await page.screenshot({ path: path.join(temp, 'home.png') })
-  await page.getByRole('button', { name: /Sample invoice/ }).click()
+  await page.getByRole('button', { name: 'Quarterly invoices' }).click()
   await page.getByRole('button', { name: 'Check invoice', exact: true }).click()
   await page.getByText('Invoice check', { exact: true }).waitFor()
   assert.match(
     await page.locator('dialog').innerText(),
-    /No discrepancies found/,
+    /No invoice fields detected/,
   )
   await page.getByRole('button', { name: 'Close' }).click()
-  await page.screenshot({ path: path.join(temp, 'editor.png') })
   await page.getByRole('button', { name: 'Back to documents' }).click()
   await writeFile(
     path.join(temp, 'sample.csv'),
@@ -58,7 +62,7 @@ try {
   await page.getByRole('button', { name: /Import a file/ }).click()
   await page.getByRole('textbox', { name: 'Document name' }).fill('Import test')
   await page.getByRole('textbox', { name: 'Document name' }).press('Enter')
-  const text = page.getByRole('textbox', { name: 'Message the assistant' })
+  const text = page.getByRole('textbox', { name: 'Message Invoicity' })
   await writeFile(path.join(temp, 'receipt.txt'), 'Control value for D2 = 42')
   await app.evaluate(
     ({ dialog }, p) => {
@@ -72,10 +76,11 @@ try {
     'Write the control value from the attachment into D2 of Sheet 1.',
   )
   await page.getByRole('button', { name: 'Send', exact: true }).click()
-  await page
-    .getByRole('button', { name: 'Apply changes' })
-    .click({ timeout: 190000 })
-  await page.getByText('Applied', { exact: true }).waitFor()
+  const receipt = page.locator('.actionDetails summary', { hasText: /^Applied/ })
+  await receipt.waitFor({ timeout: 190000 })
+  assert.equal(await page.getByRole('button', { name: 'Apply changes' }).count(), 0)
+  await receipt.click()
+  await page.getByText(/Sheet 1 · D2/i).waitFor()
   for (const ext of ['xlsx', 'xls', 'ods', 'csv', 'tsv', 'docx', 'pdf']) {
     await page.getByRole('button', { name: 'Export', exact: true }).click()
     await page.locator('select').selectOption(ext)
@@ -92,7 +97,7 @@ try {
   }
   await page.getByRole('button', { name: 'Back to documents' }).click()
   await page.getByRole('button', { name: 'Import test', exact: true }).click()
-  await page.getByText('Applied', { exact: true }).waitFor()
+  await receipt.waitFor()
   console.log('PASS desktop flow; screenshots and exports:', temp)
 } catch (e) {
   const p = await app.firstWindow()

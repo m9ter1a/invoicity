@@ -32,14 +32,14 @@ test('audit flags a line total and duplicate invoice for same supplier', () => {
   s.cellData[2] = s.cellData[1]
   assert.match(audit(r.snapshot).issues[0], /A3/)
 })
-test('independent workspace survives reopening without duplicating seed', async () => {
+test('independent workspace survives reopening with only user documents', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'invoicity-store-')),
     db = storage(dir),
     b = createBook()
   db.save(b)
   b.name = 'Updated'
   db.save(b)
-  assert.equal(storage(dir).list().length, 2)
+  assert.equal(storage(dir).list().length, 1)
   assert.equal(storage(dir).read(b.id).name, 'Updated')
   assert.throws(() => db.read('../bad'))
 })
