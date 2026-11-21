@@ -28,6 +28,7 @@ let win,
   db,
   allowClose = false,
   flushing = false
+app.commandLine.appendSwitch('lang', 'en-US')
 app.setName('Invoicity')
 if (!app.requestSingleInstanceLock()) app.quit()
 else {
@@ -47,7 +48,7 @@ else {
       height: 880,
       minWidth: 900,
       minHeight: 620,
-      backgroundColor: '#101211',
+      backgroundColor: '#111111',
       title: 'Invoicity',
       titleBarStyle: 'hiddenInset',
       trafficLightPosition: { x: 18, y: 17 },
@@ -64,7 +65,7 @@ else {
       { role: 'appMenu' },
       { role: 'editMenu' },
       {
-        label: 'Окно',
+        label: 'Window',
         submenu: [{ role: 'minimize' }, { role: 'togglefullscreen' }],
       },
     ])
@@ -89,7 +90,7 @@ function handle(name, fn) {
       e.sender !== win.webContents ||
       e.senderFrame !== win.webContents.mainFrame
     )
-      throw Error('Недоступно')
+      throw Error('Unavailable')
     return fn(...args)
   })
 }
@@ -119,13 +120,14 @@ handle('modelStatus', () => model.status())
 handle('chat', (request) => model.chat(request))
 async function pick(extensions) {
   const { filePaths } = await dialog.showOpenDialog(win, {
+    buttonLabel: 'Open',
     properties: ['openFile'],
-    filters: [{ name: 'Поддерживаемые документы', extensions }],
+    filters: [{ name: 'Supported documents', extensions }],
   })
   if (!filePaths.length) return
   const file = filePaths[0]
   if ((await fs.stat(file)).size > 50 * 1024 * 1024)
-    throw Error('Предел размера файла — 50 МБ.')
+    throw Error('Files must be 50 MB or smaller.')
   return file
 }
 handle('importFile', async () => {
@@ -177,18 +179,19 @@ handle('attachment', async () => {
       })
     ).stdout
   else text = await fs.readFile(file, 'utf8')
-  if (!text.trim()) throw Error('В файле не удалось распознать текст.')
+  if (!text.trim()) throw Error('No readable text was found in the file.')
   return {
     name: path.basename(file),
     text: text.slice(0, 6000),
     partial:
-      text.length > 6000 || text.includes('[Прочитаны первые 30 страниц.]'),
+      text.length > 6000 || text.includes('[Only the first 30 pages were read.]'),
   }
 })
 handle('exportFile', async (snap, ext, activeId) => {
   if (!['xlsx', 'xls', 'ods', 'csv', 'tsv', 'docx', 'pdf'].includes(ext))
-    throw Error('Неизвестный формат.')
+    throw Error('Unknown file format.')
   const { filePath } = await dialog.showSaveDialog(win, {
+    buttonLabel: 'Save',
     defaultPath: snap.name.replace(/[/:]/g, '-') + '.' + ext,
     filters: [{ name: ext.toUpperCase(), extensions: [ext] }],
   })
