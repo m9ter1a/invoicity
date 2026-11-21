@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron')
 const api = {}
 for (const name of [
   'list',
+  'setAppearance',
   'read',
   'create',
   'save',

@@ -1,6 +1,7 @@
 const {
   app,
   BrowserWindow,
+  nativeTheme,
   ipcMain,
   dialog,
   Menu,
@@ -48,7 +49,7 @@ else {
       height: 880,
       minWidth: 900,
       minHeight: 620,
-      backgroundColor: '#111111',
+      backgroundColor: '#fafafa',
       title: 'Invoicity',
       titleBarStyle: 'hiddenInset',
       trafficLightPosition: { x: 18, y: 17 },
@@ -100,6 +101,11 @@ handle('flushDone', (ok) => {
     allowClose = true
     win.close()
   }
+})
+handle('setAppearance', (theme) => {
+  if (!['dark', 'light'].includes(theme)) throw Error('Unknown appearance.')
+  nativeTheme.themeSource = theme
+  win.setBackgroundColor(theme === 'dark' ? '#121212' : '#fafafa')
 })
 handle('list', () => db.list())
 handle('read', (id) => db.read(id))
