@@ -11,6 +11,8 @@ for (const name of [
   'attachment',
   'audit',
   'chat',
+  'compact',
+  'trashBook',
   'modelStatus',
   'toggleStar',
   'flushDone',

@@ -5,6 +5,7 @@ const {
   ipcMain,
   dialog,
   Menu,
+  shell,
   session,
 } = require('electron')
 const path = require('node:path')
@@ -108,6 +109,8 @@ handle('setAppearance', (theme) => {
   win.setBackgroundColor(theme === 'dark' ? '#121212' : '#fafafa')
 })
 handle('list', () => db.list())
+handle('trashBook', id => shell.trashItem(db.file(id)))
+handle('compact', history => model.compact(history))
 handle('read', (id) => db.read(id))
 handle('create', () => {
   const book = createBook()
@@ -123,7 +126,19 @@ handle('toggleStar', (id) => {
 })
 handle('audit', (snap) => audit(snap))
 handle('modelStatus', () => model.status())
-handle('chat', (request) => model.chat(request))
+handle('chat', async ({ view, ...request }) => {
+  const [width, height] = win.getContentSize()
+  if (!view || !['x','y','width','height'].every(k => Number.isFinite(view[k])))
+    throw Error('The sheet image is unavailable.')
+  const x = Math.max(0, Math.floor(view.x)), y = Math.max(0, Math.floor(view.y))
+  const rect = {x, y, width: Math.min(width - x, Math.floor(view.width)),
+    height: Math.min(height - y, Math.floor(view.height))}
+  if (rect.width < 1 || rect.height < 1) throw Error('The sheet is outside the window.')
+  const screenshot = await win.webContents.capturePage(rect)
+  if (screenshot.isEmpty()) throw Error('Could not capture the current sheet.')
+  const image = screenshot.resize({width: Math.min(1000, screenshot.getSize().width)}).toJPEG(86)
+  return model.chat({...request, image: 'data:image/jpeg;base64,' + image.toString('base64')})
+})
 async function pick(extensions) {
   const { filePaths } = await dialog.showOpenDialog(win, {
     buttonLabel: 'Open',
