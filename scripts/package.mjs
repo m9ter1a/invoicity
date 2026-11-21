@@ -84,6 +84,11 @@ const [result] = await packager({
   out: path.join(root, 'release'),
   name: 'Invoicity',
   appBundleId: 'app.invoicity.desktop',
+  extendInfo: {
+    CFBundleDevelopmentRegion: 'en',
+    CFBundleLocalizations: ['en'],
+  },
+  electronLanguages: ['en', 'en-US', 'en_US'],
   appVersion: pkg.version,
   platform: 'darwin',
   arch: 'arm64',

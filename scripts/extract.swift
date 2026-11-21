@@ -6,7 +6,7 @@ let url = URL(fileURLWithPath: CommandLine.arguments[1])
 func recognize(_ image: CGImage) throws -> String {
     let request = VNRecognizeTextRequest()
     request.recognitionLevel = .accurate
-    request.recognitionLanguages = ["ru-RU", "en-US"]
+    request.recognitionLanguages = ["en-US", "ru-RU"]
     try VNImageRequestHandler(cgImage: image).perform([request])
     return (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }.joined(separator: "\n")
 }
@@ -23,7 +23,7 @@ do {
             let text = page.string?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             print(text.isEmpty ? try imageText(page.thumbnail(of: NSSize(width: 1700, height: 2200), for: .mediaBox)) : text)
         }
-        if pdf.pageCount > 30 { print("[Прочитаны первые 30 страниц.]") }
+        if pdf.pageCount > 30 { print("[Only the first 30 pages were read.]") }
     } else if let image = NSImage(contentsOf: url) { print(try imageText(image)) }
     else { exit(1) }
 } catch { exit(1) }

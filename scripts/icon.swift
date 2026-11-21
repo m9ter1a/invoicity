@@ -9,9 +9,9 @@ for points in [16, 32, 128, 256, 512] {
             let t = AffineTransform(scale: CGFloat(size) / 1024)
             (t as NSAffineTransform).concat()
             let bg = NSBezierPath(roundedRect: NSRect(x: 62, y: 62, width: 900, height: 900), xRadius: 205, yRadius: 205)
-            NSColor(srgbRed: 0.11, green: 0.15, blue: 0.12, alpha: 1).setFill()
+            NSColor(white: 0.09, alpha: 1).setFill()
             bg.fill()
-            NSColor(srgbRed: 0.77, green: 0.87, blue: 0.79, alpha: 1).setFill()
+            NSColor(white: 0.94, alpha: 1).setFill()
             for (x, y, h) in [(294, 258, 255), (452, 337, 360), (610, 516, 255)] {
                 let p = NSBezierPath()
                 p.move(to: NSPoint(x: x, y: y)); p.line(to: NSPoint(x: x + 120, y: y + 52))
