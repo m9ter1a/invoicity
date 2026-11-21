@@ -80,7 +80,8 @@ else {
         win.webContents.send('flush')
       }
     })
-    win.loadFile(path.join(__dirname, 'dist', 'index.html'))
+    const landing = app.commandLine.hasSwitch('show-welcome') ? { hash: 'welcome' } : {}
+    win.loadFile(path.join(__dirname, 'dist', 'index.html'), landing)
   })
   app.on('window-all-closed', () => app.quit())
   app.on('will-quit', () => model.stop())
