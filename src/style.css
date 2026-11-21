@@ -787,6 +787,7 @@ dialog h2 {
   display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px;
   color: var(--ink); border: 1px solid var(--line); border-radius: 7px; background: var(--panel);
 }
+.tipActions button { width: 108px; min-height: 38px; justify-content: center; line-height: 20px; white-space: nowrap; }
 .tipTop button { border: 0; color: var(--muted); padding: 4px; }
 .confirmActions button { min-height: 38px; justify-content: center; line-height: 20px; }
 .tipActions .tourPrimary, .confirmActions .primary { background: var(--primary); color: var(--on-primary); }

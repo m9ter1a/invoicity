@@ -3,7 +3,6 @@ import { createRoot } from 'react-dom/client'
 import {
   Bookmark,
   Trash2,
-  BookOpen,
   Database,
   MousePointer2,
   Plus,
@@ -90,11 +89,18 @@ function Modal({ title, children, onClose }) {
 }
 function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('appearance') === 'dark' ? 'dark' : 'light')
-  const [tour, setTour] = useState(() => localStorage.getItem('welcome-complete') ? '' : 'welcome')
-  const finishTour = () => {
+  const [tour, setTour] = useState(() => location.hash === '#welcome' || !localStorage.getItem('welcome-complete') ? 'welcome' : '')
+  useLayoutEffect(() => {
+    if (location.hash === '#welcome') {
+      localStorage.removeItem('welcome-complete')
+      window.history.replaceState(null, '', location.href.split('#')[0])
+    }
+  }, [])
+  const leaveWelcome = next => {
     localStorage.setItem('welcome-complete', '1')
-    setTour('')
+    setTour(next)
   }
+  const finishTour = () => leaveWelcome('')
   useLayoutEffect(() => {
     document.documentElement.dataset.theme = theme
     localStorage.setItem('appearance', theme)
@@ -171,7 +177,7 @@ function App() {
   return (
     <>
       {tour === 'welcome' ? (
-        <Onboarding onStart={() => setTour('guide')} onFinish={finishTour} />
+        <Onboarding onStart={() => leaveWelcome('guide')} onFinish={finishTour} />
       ) : book ? (
         <Editor
           key={book.id}
@@ -192,7 +198,6 @@ function App() {
                 invoicity
               </div>
               <div className="workspaceTools">
-                <IconButton title="Replay workspace tour" onClick={() => setTour('guide')}><BookOpen size={17} /></IconButton>
                 <ThemeSwitch theme={theme} onChange={setTheme} />
               </div>
             </div>
@@ -478,12 +483,24 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
         history: old,
       })
       if (!live.current) return
+      if (reply.calculation) {
+        const value = await grid.current.calculate(reply.calculation)
+        reply.message = reply.calculation.formula + ' = ' + value.toLocaleString('en-US', {maximumSignificantDigits:15})
+      }
       if (reply.actions.length) {
         await grid.current.finish()
         if (!live.current) return
         if (JSON.stringify(grid.current.snapshot().sheets) !== base)
           throw Error('The sheet changed during this request. Send the request again to use the current data.')
         applyPlan(grid.current, reply.actions)
+        const [write] = reply.actions
+        const formula = write.op === 'write' && write.values?.length === 1 && write.values[0]?.length === 1 && write.values[0][0]
+        if (reply.actions.length === 1 && typeof formula === 'string' && formula.startsWith('=')) {
+          await grid.current.finish()
+          const sheet = write.sheet ? grid.current.book.getSheetByName(write.sheet) : grid.current.book.getActiveSheet()
+          const value = sheet.getRange(write.range).getCellData()?.v
+          reply.message = write.range + ' contains ' + formula + (value == null ? '.' : ' → ' + value.toLocaleString('en-US') + '.')
+        }
         if (JSON.stringify(grid.current.snapshot().sheets) === base) {
           reply.actions = []
           reply.message = 'The proposed edit would leave the sheet unchanged.'

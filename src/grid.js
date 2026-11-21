@@ -64,6 +64,15 @@ export function mountGrid(container, snapshot, onChange, darkMode) {
       return book
     },
     snapshot: () => book.save(),
+    async calculate({sheet, formula}) {
+      const unit = book.getId(), id = book.getSheetByName(sheet)?.getSheetId()
+      if (!id) throw Error('The calculation sheet could not be found.')
+      const values = await api.getFormula().executeFormulas({[unit]:{[id]:{0:{0:[formula]}}}}, 15000)
+      const value = values[unit]?.[id]?.[0]?.[0]?.[0]?.value
+      if (typeof value !== 'number' || !Number.isFinite(value))
+        throw Error('The spreadsheet could not calculate ' + formula + (typeof value === 'string' ? ' (' + value + ').' : '.'))
+      return value
+    },
     setDark: dark => api.toggleDarkMode(dark),
     async finish() {
       await book.endEditingAsync(true)
@@ -229,7 +238,26 @@ function paintPattern(sh, action) {
   const width = rows[0].length
   check(width > 0 && width <= 32 && rows.every(row => typeof row === 'string' && row.length === width &&
     [...row].every(c => c === '.' || /^#[a-f0-9]{6}$/i.test(palette?.[c]))), 'Check the drawing size and color palette.')
-  const address = action.range === 'auto' ? findDrawingSpace(sh, sheetData, rows.length, width) : action.range
+  let address = action.range
+  if (address === 'auto') address = findDrawingSpace(sh, sheetData, rows.length, width)
+  if (address === 'center') {
+    let top = Infinity, bottom = -1, left = Infinity, right = -1
+    for (const [r, row] of Object.entries(sheetData.cellData || {})) {
+      for (const [c, cell] of Object.entries(row)) {
+        if (cell.v == null && !cell.f && !cell.p) continue
+        top = Math.min(top, +r); bottom = Math.max(bottom, +r)
+        left = Math.min(left, +c); right = Math.max(right, +c)
+      }
+    }
+    if (bottom < 0) {
+      const visible = sh.getVisibleRange()
+      top = visible?.startRow ?? 0; bottom = visible?.endRow ?? rows.length - 1
+      left = visible?.startColumn ?? 0; right = visible?.endColumn ?? width - 1
+    }
+    const x = Math.max(0, Math.min(sh.getMaxColumns() - width, Math.round((left + right + 1 - width) / 2)))
+    const y = Math.max(0, Math.min(sh.getMaxRows() - rows.length, Math.round((top + bottom + 1 - rows.length) / 2)))
+    address = col(x) + (y + 1)
+  }
   check(typeof address === 'string' && /^[A-Z]{1,3}[1-9]\d{0,4}(:[A-Z]{1,3}[1-9]\d{0,4})?$/i.test(address),
     'The proposed drawing address is invalid.')
   const range = sh.getRange(address), r = range.getRow(), c = range.getColumn()
