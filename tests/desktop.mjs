@@ -85,7 +85,7 @@ try {
   await page.getByRole('button', { name: 'Back to documents' }).click()
   const search = page.getByRole('searchbox', { name: 'Search documents by name' })
   await search.waitFor()
-  await page.keyboard.press('Meta+k')
+  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+k' : 'Control+k')
   assert.ok(await search.evaluate((el) => el === document.activeElement))
   await search.fill('  QUARTERLY  ')
   await page.getByRole('button', { name: 'Quarterly invoices', exact: true }).waitFor()
@@ -315,7 +315,7 @@ try {
   await button('Cancel').click()
   await button('Drawing test').waitFor()
   await button('Delete Drawing test').click()
-  await button('Move to Trash').click()
+  await button(process.platform === 'win32' ? 'Move to Recycle Bin' : 'Move to Trash').click()
   await button('Drawing test').waitFor({state:'detached'})
   console.log('PASS desktop flow; screenshots and exports:', temp)
 } catch (e) {
