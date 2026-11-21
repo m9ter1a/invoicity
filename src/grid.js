@@ -1,19 +1,54 @@
-import { createUniver, LocaleType, mergeLocales } from '@univerjs/presets'
+import {
+  createUniver,
+  defaultTheme,
+  LocaleType,
+  mergeLocales,
+} from '@univerjs/presets'
 import { UniverSheetsCorePreset } from '@univerjs/preset-sheets-core'
-import coreRu from '@univerjs/preset-sheets-core/locales/ru-RU'
+import coreEn from '@univerjs/preset-sheets-core/locales/en-US'
 import { UniverSheetsFilterPreset } from '@univerjs/preset-sheets-filter'
-import filterRu from '@univerjs/preset-sheets-filter/locales/ru-RU'
+import filterEn from '@univerjs/preset-sheets-filter/locales/en-US'
 import { UniverSheetsSortPreset } from '@univerjs/preset-sheets-sort'
-import sortRu from '@univerjs/preset-sheets-sort/locales/ru-RU'
+import sortEn from '@univerjs/preset-sheets-sort/locales/en-US'
 import '@univerjs/preset-sheets-core/lib/index.css'
 import '@univerjs/preset-sheets-filter/lib/index.css'
 import '@univerjs/preset-sheets-sort/lib/index.css'
 
+// Theme only the editor chrome. Imported cell and fill colors belong to the document.
+const neutral = {
+  0: '#ffffff',
+  50: '#fafafa',
+  100: '#eeeeee',
+  200: '#dfdfdf',
+  300: '#bcbcbc',
+  400: '#aaaaaa',
+  500: '#949494',
+  600: '#686868',
+  700: '#3b3b3b',
+  800: '#242424',
+  900: '#191919',
+  1000: '#080808',
+}
+const theme = {
+  ...defaultTheme,
+  gray: neutral,
+  primary: neutral,
+  blue: neutral,
+  red: neutral,
+  orange: neutral,
+  yellow: neutral,
+  green: neutral,
+  jiqing: neutral,
+  indigo: neutral,
+  purple: neutral,
+  pink: neutral,
+}
 export function mountGrid(container, snapshot, onChange) {
   const { univer, univerAPI: api } = createUniver({
-    locale: LocaleType.RU_RU,
+    locale: LocaleType.EN_US,
     darkMode: true,
-    locales: { [LocaleType.RU_RU]: mergeLocales(coreRu, filterRu, sortRu) },
+    theme,
+    locales: { [LocaleType.EN_US]: mergeLocales(coreEn, filterEn, sortEn) },
     presets: [
       UniverSheetsCorePreset({ container, ribbonType: 'simple' }),
       UniverSheetsFilterPreset(),
@@ -111,16 +146,16 @@ export function applyPlan(grid, actions) {
       if (a.op === 'addSheet') {
         check(
           validName(a.name) && !book.getSheetByName(a.name),
-          'Занятое или недопустимое имя листа.',
+          'This sheet name is invalid or already in use.',
         )
         book.insertSheet(a.name)
         continue
       }
-      check(sh, 'Лист из предложения отсутствует.')
+      check(sh, 'The proposed sheet could not be found.')
       if (a.op === 'renameSheet') {
         check(
           validName(a.name) && !book.getSheetByName(a.name),
-          'Проверьте имя листа.',
+          'Check the sheet name.',
         )
         sh.setName(a.name)
         continue
@@ -142,12 +177,12 @@ export function applyPlan(grid, actions) {
         check(
           integer(a.index, 1, limit) &&
             integer(a.count, a.op.startsWith('freeze') ? 0 : 1, 1000),
-          'Недопустимый индекс или количество.',
+          'Invalid position or count.',
         )
         if (a.op.startsWith('delete'))
           check(
             a.index + a.count - 1 <= limit && a.count < limit,
-            'Диапазон удаления выходит за лист.',
+            'The deletion extends beyond the sheet.',
           )
         if (a.op === 'columnWidth') sh.setColumnWidth(a.index - 1, a.count)
         else if (a.op === 'rowHeight') sh.setRowHeight(a.index - 1, a.count)
@@ -159,7 +194,7 @@ export function applyPlan(grid, actions) {
       check(
         typeof a.range === 'string' &&
           /^[A-Z]{1,3}[1-9]\d{0,4}(:[A-Z]{1,3}[1-9]\d{0,4})?$/i.test(a.range),
-        'Модель предложила некорректный адрес ячейки.',
+        'The proposed cell address is invalid.',
       )
       let range = sh.getRange(a.range)
       if (a.op === 'write') {
@@ -178,7 +213,7 @@ export function applyPlan(grid, actions) {
                     ['string', 'number', 'boolean'].includes(typeof v),
                 ),
             ),
-          'Модель предложила некорректные значения.',
+          'The proposed cell values are invalid.',
         )
         range = sh.getRange(
           range.getRow(),
@@ -191,7 +226,7 @@ export function applyPlan(grid, actions) {
         range.getHeight() * range.getWidth() <= 50000 &&
           range.getLastRow() < sh.getMaxRows() &&
           range.getLastColumn() < sh.getMaxColumns(),
-        'Диапазон выходит за пределы листа.',
+        'The range extends beyond the sheet.',
       )
       switch (a.op) {
         case 'write':
@@ -221,36 +256,36 @@ export function applyPlan(grid, actions) {
         case 'filter':
           check(
             range.createFilter(),
-            'Фильтр уже есть или диапазон не подходит.',
+            'A filter already exists or the range is invalid.',
           )
           break
         case 'sort':
           check(
             integer(a.index, range.getColumn() + 1, range.getLastColumn() + 1),
-            'Проверьте столбец сортировки.',
+            'Check the sort column.',
           )
           range.sort({ column: a.index - 1, ascending: a.ascending !== false })
           break
         case 'format':
           check(
             typeof a.value === 'string' && a.value.length <= 150,
-            'Некорректный формат.',
+            'Invalid number format.',
           )
           range.setNumberFormat(a.value)
           break
         case 'fill':
-          check(/^#[0-9a-f]{6}$/i.test(a.value), 'Некорректный цвет.')
+          check(/^#[0-9a-f]{6}$/i.test(a.value), 'Invalid color.')
           range.setBackgroundColor(a.value)
           break
         case 'align':
           check(
             ['left', 'center', 'right'].includes(a.value),
-            'Некорректное выравнивание.',
+            'Invalid alignment.',
           )
           range.setHorizontalAlignment(a.value)
           break
         default:
-          throw Error('Неизвестное действие модели.')
+          throw Error('Unsupported assistant action.')
       }
     }
   } catch (e) {

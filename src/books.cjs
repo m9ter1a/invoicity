@@ -23,54 +23,58 @@ function sheetFromRows(name, rows, widths = []) {
     columnData: Object.fromEntries(widths.map((w, i) => [i, { w }])),
   }
 }
-const rubric = { bg: { rgb: '#39483f' }, cl: { rgb: '#ffffff' }, bl: 1 }
+const rubric = { bg: { rgb: '#323232' }, cl: { rgb: '#ffffff' }, bl: 1 }
 const money = { n: { pattern: '#,##0.00' } }
 const heading = (v) => ({ v, t: 1, s: rubric })
 const formula = (f) => ({ f, s: money })
 function createBook(kind = 'blank', name, demo = false) {
   const id = randomUUID()
-  const today = new Date().toLocaleDateString('ru-RU')
+  const today = new Date().toLocaleDateString('en-US')
   const invoice = [
-    [{ v: 'Инвойс', t: 1, s: { fs: 21, bl: 1 } }, '№', demo ? 'DEMO-001' : ''],
-    ['Дата', today],
-    ['Поставщик', demo ? 'Студия «Пример»' : ''],
-    ['Покупатель', demo ? 'Компания «Образец»' : ''],
-    ['Валюта', 'RUB'],
-    [],
-    ['Наименование', 'Количество', 'Цена', 'Сумма'].map(heading),
     [
-      demo ? 'Аналитические услуги' : '',
+      { v: 'Invoice', t: 1, s: { fs: 21, bl: 1 } },
+      'No.',
+      demo ? 'DEMO-001' : '',
+    ],
+    ['Date', today],
+    ['Supplier', demo ? 'Example Studio' : ''],
+    ['Customer', demo ? 'Sample Company' : ''],
+    ['Currency', 'RUB'],
+    [],
+    ['Description', 'Quantity', 'Unit price', 'Amount'].map(heading),
+    [
+      demo ? 'Analysis services' : '',
       demo ? 4 : null,
       demo ? 2500 : null,
       formula('=ROUND(B8*C8,2)'),
     ],
     [
-      demo ? 'Подготовка отчёта' : '',
+      demo ? 'Report preparation' : '',
       demo ? 2 : null,
       demo ? 1800 : null,
       formula('=ROUND(B9*C9,2)'),
     ],
     ['', null, null, formula('=ROUND(B10*C10,2)')],
     [],
-    ['Итого', null, null, formula('=SUM(D8:D10)')],
+    ['Total', null, null, formula('=SUM(D8:D10)')],
   ]
   const register = [
-    ['Номер инвойса', 'Поставщик', 'Дата', 'Сумма', 'Валюта', 'Статус'].map(
+    ['Invoice number', 'Supplier', 'Date', 'Amount', 'Currency', 'Status'].map(
       heading,
     ),
   ]
   const sh =
     kind === 'invoice'
-      ? sheetFromRows('Инвойс', invoice, [235, 160, 140, 154])
+      ? sheetFromRows('Invoice', invoice, [235, 160, 140, 154])
       : kind === 'register'
-        ? sheetFromRows('Реестр', register, [160, 220, 140, 150, 110, 155])
-        : sheetFromRows('Лист 1', [])
+        ? sheetFromRows('Register', register, [160, 220, 140, 150, 110, 155])
+        : sheetFromRows('Sheet 1', [])
   const title =
     name ||
     {
-      invoice: 'Новый инвойс',
-      register: 'Реестр инвойсов',
-      blank: 'Без названия',
+      invoice: 'New invoice',
+      register: 'Invoice register',
+      blank: 'Untitled spreadsheet',
     }[kind]
   return {
     id,
@@ -84,7 +88,7 @@ function createBook(kind = 'blank', name, demo = false) {
       id,
       name: title,
       appVersion: '1.6.0',
-      locale: 'ruRU',
+      locale: 'enUS',
       styles: {},
       sheetOrder: [sh.id],
       sheets: { [sh.id]: sh },
@@ -133,8 +137,10 @@ function audit(snapshot) {
           .trim()
           .toLowerCase(),
       )
-      if (norm.includes('количество') || norm.includes('qty')) {
-        qty = norm.findIndex((v) => ['количество', 'qty'].includes(v))
+      if (norm.some((v) => ['quantity', 'qty', 'количество'].includes(v))) {
+        qty = norm.findIndex((v) =>
+          ['quantity', 'qty', 'количество'].includes(v),
+        )
         price = norm.findIndex((v) =>
           ['цена', 'price', 'unit price'].includes(v),
         )
@@ -144,9 +150,11 @@ function audit(snapshot) {
         )
         return
       }
-      if (norm.includes('номер инвойса')) {
-        number = norm.indexOf('номер инвойса')
-        supplier = norm.indexOf('поставщик')
+      if (norm.some((v) => ['invoice number', 'номер инвойса'].includes(v))) {
+        number = norm.findIndex((v) =>
+          ['invoice number', 'номер инвойса'].includes(v),
+        )
+        supplier = norm.findIndex((v) => ['supplier', 'поставщик'].includes(v))
         return
       }
       if (number >= 0 && row.some((v) => v !== '' && v != null)) {
@@ -158,12 +166,12 @@ function audit(snapshot) {
             .toLowerCase() +
           '|' +
           n.toLowerCase()
-        if (!n) say(r, number, 'Отсутствует номер инвойса.')
+        if (!n) say(r, number, 'Missing invoice number.')
         else if (seen.has(k))
           say(
             r,
             number,
-            'Повтор номера у того же поставщика, первая запись в строке ' +
+            'Duplicate invoice number for this supplier. First entry in row ' +
               seen.get(k) +
               '.',
           )
@@ -182,10 +190,10 @@ function audit(snapshot) {
           say(
             r,
             total,
-            'Сумма проверенных позиций ' +
+            'Line items total ' +
               expectedTotal.toFixed(2) +
-              ', указан итог ' +
-              String(row[total] ?? 'пусто') +
+              ', but the stated total is ' +
+              String(row[total] ?? 'blank') +
               '.',
           )
       }
@@ -205,20 +213,33 @@ function audit(snapshot) {
           lines++
         }
         if ([q, p, t].some((x) => typeof x !== 'number' || !Number.isFinite(x)))
-          say(r, total, 'Проверьте числовые значения количества, цены и суммы.')
+          say(
+            r,
+            total,
+            'Check that the quantity, price and amount are numbers.',
+          )
         else if (Math.abs(Math.round(q * p * 100) / 100 - t) >= 0.009)
           say(
             r,
             total,
-            'Ожидаемая сумма ' + (q * p).toFixed(2) + ', указано ' + t + '.',
+            'Expected amount ' + (q * p).toFixed(2) + ', found ' + t + '.',
           )
       }
       if (
-        ['поставщик', 'покупатель', 'дата', 'валюта'].includes(norm[0]) &&
+        [
+          'supplier',
+          'customer',
+          'date',
+          'currency',
+          'поставщик',
+          'покупатель',
+          'дата',
+          'валюта',
+        ].includes(norm[0]) &&
         row.length <= 2
       ) {
         tested++
-        if (!row[1]) say(r, 1, 'Поле «' + row[0] + '» пустое.')
+        if (!row[1]) say(r, 1, 'The field “' + row[0] + '” is empty.')
       }
       for (const [c, v] of Object.entries(row))
         if (
@@ -226,7 +247,7 @@ function audit(snapshot) {
             String(v),
           )
         )
-          say(r, Number(c), 'Ошибка формулы ' + v + '.')
+          say(r, Number(c), 'Formula error ' + v + '.')
     })
   }
   return { tested, issues }

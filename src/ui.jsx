@@ -2,11 +2,8 @@ import React, { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
   Layers3,
-  PanelsTopLeft,
   Star,
-  Cpu,
   LockKeyhole,
-  ChevronRight,
   Plus,
   ArrowUpRight,
   Upload,
@@ -24,9 +21,7 @@ import {
   PanelRightClose,
   PanelRightOpen,
   CornerDownRight,
-  HardDrive,
   FileText,
-  ChevronDown,
   LoaderCircle,
   ArrowDownToLine,
   Grid2X2,
@@ -38,13 +33,13 @@ import '@fontsource/inter/600.css'
 import './style.css'
 const api = window.localDesk
 const types = {
-  blank: 'Таблица',
-  invoice: 'Инвойс',
-  register: 'Реестр',
-  import: 'Импорт',
+  blank: 'Spreadsheet',
+  invoice: 'Invoice',
+  register: 'Register',
+  import: 'Imported',
 }
 const prettyTime = (value) =>
-  new Intl.DateTimeFormat('ru-RU', {
+  new Intl.DateTimeFormat('en-US', {
     day: 'numeric',
     month: 'short',
     hour: '2-digit',
@@ -110,10 +105,10 @@ function Modal({ title, children, onClose }) {
     return () => d.close()
   }, [])
   return (
-    <dialog ref={ref} onCancel={onClose}>
+    <dialog aria-label={title} ref={ref} onCancel={onClose}>
       <header>
         <h2>{title}</h2>
-        <IconButton title="Закрыть" onClick={onClose}>
+        <IconButton title="Close" onClick={onClose}>
           <X />
         </IconButton>
       </header>
@@ -124,9 +119,7 @@ function Modal({ title, children, onClose }) {
 function App() {
   const [items, setItems] = useState([]),
     [book, setBook] = useState(null),
-    [view, setView] = useState('all'),
     [query, setQuery] = useState(''),
-    [modal, setModal] = useState(''),
     [model, setModel] = useState({}),
     [error, setError] = useState(''),
     [loading, setLoading] = useState(false)
@@ -183,10 +176,9 @@ function App() {
       notify(e)
     }
   }
-  const records = items.filter(
-    (i) =>
-      (view === 'all' || i.star) &&
-      i.name.toLowerCase().includes(query.toLowerCase()),
+  const searchTerm = query.trim().toLocaleLowerCase('en-US')
+  const records = items.filter((item) =>
+    item.name.toLocaleLowerCase('en-US').includes(searchTerm),
   )
   return (
     <>
@@ -201,125 +193,65 @@ function App() {
         />
       ) : (
         <div className="workspace">
-          <aside className="rail">
-            <div className="traffic" />
-            <div className="brand">
-              <Mark />
-              invoicity
-            </div>
-            <div className="navlabel">Библиотека</div>
-            <nav>
-              {[
-                ['all', PanelsTopLeft, 'Все таблицы'],
-                ['stars', Star, 'Избранное'],
-              ].map(([key, I, title]) => (
-                <button
-                  key={key}
-                  className={view === key ? 'selected' : ''}
-                  onClick={() => {
-                    setView(key)
-                    setQuery('')
-                  }}
-                >
-                  <I size={17} />
-                  {title}
-                  <small>
-                    {key === 'all'
-                      ? items.length
-                      : items.filter((i) => i.star).length}
-                  </small>
-                </button>
-              ))}
-            </nav>
-            <div className="railBottom">
-              <button className="modelLink" onClick={() => setModal('model')}>
-                <Cpu size={17} />
-                Локальная модель
-                <ChevronRight size={14} />
-              </button>
-              <div className="device">
-                <span className="deviceIcon">
-                  <HardDrive size={16} />
-                </span>
-                <div>
-                  Этот Mac<small>Локальное хранилище</small>
-                </div>
-              </div>
-            </div>
-          </aside>
           <main className="home">
             <div className="topline">
-              <span>
-                <Layers3 size={15} /> Рабочая область <ChevronRight size={13} />{' '}
-                <b>{view === 'all' ? 'Обзор' : 'Избранное'}</b>
-              </span>
+              <div className="brand">
+                <Mark />
+                invoicity
+              </div>
               <span className="privacy">
-                <i /> Локальный режим
+                <LockKeyhole size={13} /> On this Mac
               </span>
             </div>
             <div className="homeInner">
               <header className="homeTitle">
-                <div>
-                  <h1>{view === 'all' ? 'Рабочая область' : 'Избранное'}</h1>
-                  <p>
-                    {view === 'all'
-                      ? 'Инвойсы и таблицы на этом устройстве.'
-                      : 'Таблицы, которые вы отметили звездой.'}
-                  </p>
-                </div>
+                <h1>Workspace</h1>
               </header>
-              {view === 'all' && (
-                <>
-                  <div className="launch">
-                    <button
-                      disabled={loading}
-                      className="newCard"
-                      onClick={() => open(() => api.create('blank'))}
-                    >
-                      <div className="newContent">
-                        <span className="largeIcon">
-                          <Plus />
-                        </span>
-                        <strong>Новая таблица</strong>
-                        <span>Начать с чистого листа</span>
-                      </div>
-                      <Paper />
-                    </button>
-                    <button
-                      disabled={loading}
-                      className="importCard"
-                      onClick={() => open(() => api.importFile())}
-                    >
-                      <span className="largeIcon">
-                        <Upload />
-                      </span>
-                      <strong>Импорт файла</strong>
-                      <span>XLSX, XLS, ODS, CSV и TSV</span>
-                      <ArrowUpRight className="cardArrow" size={17} />
-                    </button>
+              <div className="launch">
+                <button
+                  disabled={loading}
+                  className="newCard"
+                  onClick={() => open(() => api.create('blank'))}
+                >
+                  <div className="newContent">
+                    <span className="largeIcon">
+                      <Plus />
+                    </span>
+                    <strong>New spreadsheet</strong>
+                    <span>Start with a blank workbook</span>
                   </div>
-                  <div className="templates">
-                    <span>Из шаблона</span>
-                    <button onClick={() => open(() => api.create('invoice'))}>
-                      <FileText />
-                      Инвойс
-                      <ArrowUpRight />
-                    </button>
-                    <button onClick={() => open(() => api.create('register'))}>
-                      <Rows3 />
-                      Реестр инвойсов
-                      <ArrowUpRight />
-                    </button>
-                  </div>
-                </>
-              )}
+                  <Paper />
+                </button>
+                <button
+                  disabled={loading}
+                  className="importCard"
+                  onClick={() => open(() => api.importFile())}
+                >
+                  <span className="largeIcon">
+                    <Upload />
+                  </span>
+                  <strong>Import a file</strong>
+                  <span>Excel, OpenDocument, CSV or TSV</span>
+                  <ArrowUpRight className="cardArrow" size={17} />
+                </button>
+              </div>
+              <div className="templates">
+                <span>Templates</span>
+                <button onClick={() => open(() => api.create('invoice'))}>
+                  <FileText />
+                  Invoice
+                  <ArrowUpRight />
+                </button>
+                <button onClick={() => open(() => api.create('register'))}>
+                  <Rows3 />
+                  Invoice register
+                  <ArrowUpRight />
+                </button>
+              </div>
               <section className="library">
                 <div className="sectionHead">
                   <h2>
-                    {view === 'all'
-                      ? 'Недавние таблицы'
-                      : 'Сохранённые таблицы'}{' '}
-                    <small>{records.length}</small>
+                    Documents <small aria-live="polite">{records.length}</small>
                   </h2>
                   <label className="search">
                     <Search size={15} />
@@ -327,17 +259,18 @@ function App() {
                       ref={search}
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
-                      placeholder="Поиск таблиц"
-                      aria-label="Поиск таблиц"
+                      type="search"
+                      placeholder="Search documents by name"
+                      aria-label="Search documents by name"
                     />
                     <kbd>⌘ K</kbd>
                   </label>
                 </div>
                 <div className="records">
                   <div className="listHead">
-                    <span>Название</span>
-                    <span>Тип</span>
-                    <span>Изменено</span>
+                    <span>Name</span>
+                    <span>Type</span>
+                    <span>Last modified</span>
                     <span />
                   </div>
                   {records.map((i) => {
@@ -353,15 +286,14 @@ function App() {
                           </span>
                           <span>
                             {i.name}
-                            {i.demo && <small>Демонстрационная книга</small>}
+                            {i.demo && <small>Sample workbook</small>}
                           </span>
                         </button>
                         <span>{types[i.kind]}</span>
                         <time>{prettyTime(i.updated)}</time>
                         <IconButton
-                          title={
-                            i.star ? 'Убрать из избранного' : 'В избранное'
-                          }
+                          aria-pressed={Boolean(i.star)}
+                          title={i.star ? 'Unstar document' : 'Star document'}
                           onClick={async () => {
                             try {
                               await api.toggleStar(i.id)
@@ -381,11 +313,19 @@ function App() {
                   })}
                   {!records.length && (
                     <div className="empty">
-                      {query
-                        ? 'Совпадений нет.'
-                        : view === 'stars'
-                          ? 'Отметьте таблицу звездой, и она появится здесь.'
-                          : 'Создайте таблицу или импортируйте файл.'}
+                      {searchTerm
+                        ? 'No matching documents.'
+                        : 'Create a spreadsheet or import a file to get started.'}
+                      {searchTerm && (
+                        <button
+                          onClick={() => {
+                            setQuery('')
+                            search.current?.focus()
+                          }}
+                        >
+                          Clear search
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -394,30 +334,10 @@ function App() {
           </main>
         </div>
       )}
-      {modal === 'model' && (
-        <Modal title="Локальная модель" onClose={() => setModal('')}>
-          <div className="modelBox">
-            <Cpu />
-            <div>
-              <b>NVIDIA Nemotron 3 Nano</b>
-              <p>4B · Q4_K_M · 2,84 ГБ</p>
-            </div>
-          </div>
-          <p>
-            {model.installed
-              ? 'Модель установлена на этом Mac и загружается в память при первом вопросе.'
-              : 'Файлы модели отсутствуют. Установите полную сборку приложения.'}
-          </p>
-          <div className="localNote">
-            <LockKeyhole size={16} />
-            Таблицы, вложения и чат обрабатываются на устройстве.
-          </div>
-        </Modal>
-      )}
       {error && (
         <div className="toast" role="status">
           {error}
-          <IconButton title="Закрыть" onClick={() => setError('')}>
+          <IconButton title="Close" onClick={() => setError('')}>
             <X size={15} />
           </IconButton>
         </div>
@@ -427,27 +347,27 @@ function App() {
 }
 
 const operationNames = {
-  write: 'Записать значения',
-  clear: 'Очистить',
-  bold: 'Полужирный',
-  italic: 'Курсив',
-  merge: 'Объединить',
-  unmerge: 'Разъединить',
-  filter: 'Фильтр',
-  sort: 'Сортировка',
-  format: 'Числовой формат',
-  fill: 'Заливка',
-  align: 'Выравнивание',
-  addSheet: 'Добавить лист',
-  renameSheet: 'Переименовать лист',
-  insertRows: 'Вставить строки',
-  deleteRows: 'Удалить строки',
-  insertColumns: 'Вставить столбцы',
-  deleteColumns: 'Удалить столбцы',
-  columnWidth: 'Ширина столбца',
-  rowHeight: 'Высота строки',
-  freezeRows: 'Закрепить строки',
-  freezeColumns: 'Закрепить столбцы',
+  write: 'Write values',
+  clear: 'Clear cells',
+  bold: 'Bold',
+  italic: 'Italic',
+  merge: 'Merge cells',
+  unmerge: 'Unmerge cells',
+  filter: 'Filter',
+  sort: 'Sort',
+  format: 'Number format',
+  fill: 'Fill color',
+  align: 'Alignment',
+  addSheet: 'Add sheet',
+  renameSheet: 'Rename sheet',
+  insertRows: 'Insert rows',
+  deleteRows: 'Delete rows',
+  insertColumns: 'Insert columns',
+  deleteColumns: 'Delete columns',
+  columnWidth: 'Column width',
+  rowHeight: 'Row height',
+  freezeRows: 'Freeze rows',
+  freezeColumns: 'Freeze columns',
 }
 function Editor({ initial, home, flush, notify, model }) {
   const record = useRef(initial),
@@ -462,7 +382,7 @@ function Editor({ initial, home, flush, notify, model }) {
     [text, setText] = useState(''),
     [files, setFiles] = useState([]),
     [busy, setBusy] = useState(false),
-    [saving, setSaving] = useState('Сохранено'),
+    [saving, setSaving] = useState('Saved'),
     [chatOpen, setChatOpen] = useState(true),
     [modal, setModal] = useState(''),
     [format, setFormat] = useState('xlsx'),
@@ -485,15 +405,15 @@ function Editor({ initial, home, flush, notify, model }) {
     saveChain.current = job
     try {
       await job
-      if (live.current && saveChain.current === job) setSaving('Сохранено')
+      if (live.current && saveChain.current === job) setSaving('Saved')
     } catch (e) {
-      if (live.current) setSaving('Ошибка сохранения')
+      if (live.current) setSaving('Could not save')
       throw e
     }
   }
   function dirty() {
     if (!live.current) return
-    setSaving('Сохранение…')
+    setSaving('Saving…')
     clearTimeout(timer.current)
     timer.current = setTimeout(() => save().catch(notify), 450)
   }
@@ -518,7 +438,7 @@ function Editor({ initial, home, flush, notify, model }) {
     if (body.current) body.current.scrollTop = body.current.scrollHeight
   }, [messages, busy])
   function rename(value) {
-    const n = value.trim() || 'Без названия'
+    const n = value.trim() || 'Untitled spreadsheet'
     setName(n)
     record.current.name = n
     grid.current?.book.setName(n)
@@ -552,7 +472,7 @@ function Editor({ initial, home, flush, notify, model }) {
           {
             role: 'assistant',
             text: reply.actions.length
-              ? 'Предлагаю изменения в таблице.'
+              ? 'Review the proposed changes below.'
               : reply.message,
             actions: reply.actions,
             state: reply.actions.length ? 'pending' : undefined,
@@ -578,7 +498,7 @@ function Editor({ initial, home, flush, notify, model }) {
         m.base
       )
         throw Error(
-          'Таблица изменилась после запроса. Попросите ассистента обновить предложение.',
+          'The workbook has changed. Ask the assistant for an updated proposal.',
         )
       applyPlan(grid.current, m.actions)
       setHistory(
@@ -604,14 +524,14 @@ function Editor({ initial, home, flush, notify, model }) {
     <div className="studio">
       <div className="editorTop">
         <span className="editorTraffic" />
-        <IconButton title="К таблицам" disabled={busy} onClick={home}>
+        <IconButton title="Back to documents" disabled={busy} onClick={home}>
           <ArrowLeft size={18} />
         </IconButton>
         <span className="fileIcon mini">
           <FileSpreadsheet size={15} />
         </span>
         <input
-          aria-label="Название таблицы"
+          aria-label="Document name"
           className="titleInput"
           value={name}
           maxLength={100}
@@ -628,7 +548,7 @@ function Editor({ initial, home, flush, notify, model }) {
         <div className="spacer" />
         <button disabled={!ready} className="barAction" onClick={checkBook}>
           <ShieldCheck size={16} />
-          Проверить
+          Check invoice
         </button>
         <button
           disabled={!ready}
@@ -636,10 +556,10 @@ function Editor({ initial, home, flush, notify, model }) {
           onClick={() => setModal('export')}
         >
           <Download size={15} />
-          Экспорт
+          Export
         </button>
         <IconButton
-          title={chatOpen ? 'Скрыть ассистента' : 'Открыть ассистента'}
+          title={chatOpen ? 'Hide assistant' : 'Open assistant'}
           onClick={() => setChatOpen(!chatOpen)}
         >
           {chatOpen ? <PanelRightClose /> : <PanelRightOpen />}
@@ -650,7 +570,7 @@ function Editor({ initial, home, flush, notify, model }) {
           <div ref={host} className="gridHost" />
           {failed && (
             <div className="gridError" role="alert">
-              Не удалось открыть редактор. {failed}
+              Could not open the editor. {failed}
             </div>
           )}
         </div>
@@ -661,10 +581,10 @@ function Editor({ initial, home, flush, notify, model }) {
                 <Layers3 size={17} />
               </span>
               <div>
-                <b>Ассистент</b>
+                <b>Assistant</b>
                 <small>Nemotron 3 Nano</small>
               </div>
-              <span className="localDot" title="На устройстве" />
+              <span className="localDot" title="On this device" />
             </header>
             <div className="conversation" ref={body}>
               {!messages.length && (
@@ -673,23 +593,22 @@ function Editor({ initial, home, flush, notify, model }) {
                     <Layers3 size={27} />
                   </span>
                   <h2>
-                    Чем помочь
-                    <br />с таблицей?
+                    How can I help
+                    <br />
+                    with this sheet?
                   </h2>
-                  <p>Задайте вопрос о данных или поручите изменить ячейки.</p>
-                  {['Проверь этот инвойс', 'Объясни расчёт итоговой суммы'].map(
-                    (p) => (
-                      <button disabled={!ready} key={p} onClick={() => ask(p)}>
-                        <CornerDownRight size={14} />
-                        {p}
-                      </button>
-                    ),
-                  )}
+                  <p>Ask about your data or request a change to the sheet.</p>
+                  {['Review this invoice', 'Explain the total'].map((p) => (
+                    <button disabled={!ready} key={p} onClick={() => ask(p)}>
+                      <CornerDownRight size={14} />
+                      {p}
+                    </button>
+                  ))}
                 </div>
               )}
               {messages.map((m, i) => (
                 <div className={'msg ' + m.role} key={i}>
-                  <small>{m.role === 'user' ? 'Вы' : 'Nemotron'}</small>
+                  <small>{m.role === 'user' ? 'You' : 'Nemotron'}</small>
                   <p>{m.text}</p>
                   {m.files?.length > 0 && (
                     <span className="attachedNames">{m.files.join(', ')}</span>
@@ -704,7 +623,7 @@ function Editor({ initial, home, flush, notify, model }) {
                               a.sheet,
                               a.range,
                               a.name,
-                              a.index != null ? '№ ' + a.index : '',
+                              a.index != null ? 'No. ' + a.index : '',
                               a.count,
                               a.value,
                             ]
@@ -716,12 +635,12 @@ function Editor({ initial, home, flush, notify, model }) {
                       ))}
                       {m.state === 'pending' ? (
                         <button disabled={busy} onClick={() => apply(i)}>
-                          Применить изменения
+                          Apply changes
                         </button>
                       ) : (
                         <span>
                           <Check size={13} />
-                          Применено
+                          Applied
                         </span>
                       )}
                     </div>
@@ -731,7 +650,7 @@ function Editor({ initial, home, flush, notify, model }) {
               {busy && (
                 <div className="thinking">
                   <LoaderCircle size={14} />
-                  Модель обрабатывает запрос…
+                  Working on your request…
                 </div>
               )}
             </div>
@@ -740,9 +659,9 @@ function Editor({ initial, home, flush, notify, model }) {
                 <div className="attachment" key={i}>
                   <Paperclip size={13} />
                   {f.name}
-                  {f.partial ? ' (фрагмент)' : ''}
+                  {f.partial ? ' (excerpt)' : ''}
                   <IconButton
-                    title="Убрать вложение"
+                    title="Remove attachment"
                     onClick={() => setFiles(files.filter((_, j) => j !== i))}
                   >
                     <X size={13} />
@@ -751,8 +670,8 @@ function Editor({ initial, home, flush, notify, model }) {
               ))}
               <div className="composer">
                 <textarea
-                  aria-label="Сообщение ассистенту"
-                  placeholder="Спросите о таблице…"
+                  aria-label="Message the assistant"
+                  placeholder="Ask about this sheet…"
                   maxLength={2500}
                   value={text}
                   onChange={(e) => setText(e.target.value)}
@@ -769,7 +688,7 @@ function Editor({ initial, home, flush, notify, model }) {
                 />
                 <div>
                   <IconButton
-                    title="Прикрепить документ"
+                    title="Attach document"
                     disabled={busy || files.length >= 2}
                     onClick={async () => {
                       try {
@@ -784,7 +703,7 @@ function Editor({ initial, home, flush, notify, model }) {
                   </IconButton>
                   <button
                     className="send"
-                    aria-label="Отправить"
+                    aria-label="Send"
                     disabled={
                       busy || !text.trim() || !ready || !model.installed
                     }
@@ -796,16 +715,16 @@ function Editor({ initial, home, flush, notify, model }) {
               </div>
               <small>
                 <LockKeyhole size={11} />
-                Обработка на этом Mac
+                Processed on this Mac
               </small>
             </div>
           </aside>
         )}
       </div>
       {modal === 'export' && (
-        <Modal title="Экспорт таблицы" onClose={() => setModal('')}>
+        <Modal title="Export workbook" onClose={() => setModal('')}>
           <label className="field">
-            Формат файла
+            File format
             <select value={format} onChange={(e) => setFormat(e.target.value)}>
               {[
                 ['xlsx', 'Excel (.xlsx)'],
@@ -824,10 +743,10 @@ function Editor({ initial, home, flush, notify, model }) {
           </label>
           <p>
             {['csv', 'tsv'].includes(format)
-              ? 'Значения активного листа.'
+              ? 'Values from the active sheet.'
               : ['docx', 'pdf'].includes(format)
-                ? 'Все листы с рассчитанными значениями.'
-                : 'Все листы книги с формулами.'}
+                ? 'All sheets with calculated values.'
+                : 'All sheets, including formulas.'}
           </p>
           <button
             className="primary"
@@ -842,7 +761,7 @@ function Editor({ initial, home, flush, notify, model }) {
                   )
                 ) {
                   setModal('')
-                  notify('Файл сохранён.')
+                  notify('File saved.')
                 }
               } catch (e) {
                 notify(e)
@@ -850,25 +769,25 @@ function Editor({ initial, home, flush, notify, model }) {
             }}
           >
             <ArrowDownToLine size={16} />
-            Сохранить файл
+            Save file
           </button>
         </Modal>
       )}
       {modal === 'audit' && audit && (
-        <Modal title="Проверка инвойса" onClose={() => setModal('')}>
+        <Modal title="Invoice check" onClose={() => setModal('')}>
           <div className="auditResult">
             <ShieldCheck />
             <b>
               {audit.issues.length
-                ? 'Замечаний: ' + audit.issues.length
+                ? 'Issues found: ' + audit.issues.length
                 : audit.tested
-                  ? 'В проверенных полях расхождений нет'
-                  : 'Типовые поля инвойса не найдены'}
+                  ? 'No discrepancies found'
+                  : 'No invoice fields detected'}
             </b>
           </div>
           <p>
-            Проверены формулы и распознанные поля. Количество проверок по
-            строкам и реквизитам — {audit.tested}.
+            Checked formulas and recognized invoice fields. Field and line
+            checks completed: {audit.tested}.
           </p>
           {audit.issues.map((s, i) => (
             <p className="issue" key={i}>

@@ -18,7 +18,7 @@ const fs = require('node:fs/promises')
 function checkBounds(r, c) {
   if (r >= 100000 || c >= 1000)
     throw Error(
-      'Для этой версии предел листа — 100 000 строк и 1 000 столбцов.',
+      'Sheets can contain up to 100,000 rows and 1,000 columns.',
     )
 }
 const argb = (color) => (color?.argb ? '#' + color.argb.slice(-6) : undefined)
@@ -42,14 +42,14 @@ async function importBook(filename) {
       skipEmptyLines: 'greedy',
     })
     if (parsed.errors.some((e) => e.code === 'MissingQuotes'))
-      throw Error('Незакрытые кавычки в CSV.')
+      throw Error('The CSV contains an unclosed quotation mark.')
     const rows = parsed.data.map((row) =>
       row.map((v) =>
         /^-?(0|[1-9]\d*)(\.\d+)?$/.test(v) && v.length < 16 ? Number(v) : v,
       ),
     )
     rows.forEach((row, r) => checkBounds(r, row.length - 1))
-    add(sheetFromRows('Лист 1', rows))
+    add(sheetFromRows('Sheet 1', rows))
   } else {
     const wb = XLSX.read(data, {
       type: 'buffer',
@@ -113,7 +113,7 @@ async function importBook(filename) {
       }
     }
   }
-  if (!snap.sheetOrder.length) throw Error('Файл не содержит листов.')
+  if (!snap.sheetOrder.length) throw Error('The file contains no sheets.')
   book.kind = 'import'
   return book
 }
@@ -227,7 +227,7 @@ async function exportBytes(snap, ext, activeId) {
         rows = values(snap, sheet)
       const cols = Math.max(1, ...rows.map((r) => r.length))
       if (cols * Math.max(1, rows.length) > 150000)
-        throw Error('Для такого объёма используйте XLSX.')
+        throw Error('Use XLSX to export a workbook of this size.')
       return {
         children: [
           new Paragraph({ text: sheet.name, heading: HeadingLevel.HEADING_1 }),
@@ -251,7 +251,7 @@ async function exportBytes(snap, ext, activeId) {
     })
     return Packer.toBuffer(new Document({ sections }))
   }
-  throw Error('Неизвестный формат экспорта.')
+  throw Error('Unsupported export format.')
 }
 function printHTML(snap) {
   const escape = (v) =>
