@@ -422,11 +422,9 @@ h1 {
   width: 33px;
   height: 33px;
   color: var(--ink);
-  background: var(--raised);
-  border: 1px solid var(--line);
-  border-radius: 50%;
+  background: transparent;
 }
-.copilot header .iconBtn:hover { background: var(--hover); }
+.copilot header .iconBtn:hover { color: var(--muted); }
 .chatDivider {
   position: absolute;
   z-index: 5;
@@ -549,7 +547,8 @@ h1 {
 }
 .composer textarea:focus-visible { outline: none; }
 .composer textarea::placeholder { color: var(--muted); }
-.composer > div { display: flex; align-items: center; justify-content: space-between; }
+.composer > div { display: flex; align-items: center; gap: 3px; }
+.composer .send { margin-left: auto; }
 .send, .primary {
   background: var(--primary);
   color: var(--on-primary);
@@ -557,7 +556,8 @@ h1 {
   font-weight: 600;
 }
 .send { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; }
-.primary { padding: 9px 13px; margin-top: 8px; border-radius: 6px; }
+.primary { padding: 9px 13px; border-radius: 6px; }
+dialog > .primary { margin-top: 8px; }
 .msg { min-width: 0; overflow-wrap: anywhere; }
 .msg small { display: block; color: var(--muted); font-size: 11px; margin: 0 0 6px; }
 .msg p { white-space: pre-wrap; line-height: 1.65; font-size: 13px; }
@@ -788,7 +788,8 @@ dialog h2 {
   color: var(--ink); border: 1px solid var(--line); border-radius: 7px; background: var(--panel);
 }
 .tipTop button { border: 0; color: var(--muted); padding: 4px; }
-.tipActions .tourPrimary, .confirmActions .primary { min-height: 32px; background: var(--primary); color: var(--on-primary); }
+.confirmActions button { min-height: 38px; justify-content: center; line-height: 20px; }
+.tipActions .tourPrimary, .confirmActions .primary { background: var(--primary); color: var(--on-primary); }
 .chatLauncher { left: 0; top: 0; }
 .chatLauncher .mark { transition: transform 220ms cubic-bezier(.2,.8,.2,1.3); }
 .chatLauncher[data-dragging=true] { will-change: transform; cursor: grabbing; }

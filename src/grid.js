@@ -160,22 +160,85 @@ const check = (b, m) => {
 const validName = (s) =>
   typeof s === 'string' && s.trim() && s.length <= 31 && !/[\\/?*:\[\]]/.test(s)
 const integer = (v, min, max) => Number.isInteger(v) && v >= min && v <= max
-function paintPattern(sh, range, action, sheetData) {
+function iconPixels(symbol) {
+  check(typeof symbol === 'string' && /\p{Extended_Pictographic}/u.test(symbol) &&
+    [...new Intl.Segmenter().segment(symbol)].length === 1, 'Choose a single picture to paint.')
+  const size = 18, canvas = document.createElement('canvas')
+  canvas.width = canvas.height = size * 4
+  const ctx = canvas.getContext('2d')
+  ctx.font = '62px "Apple Color Emoji"'
+  ctx.textAlign = 'center'
+  const bounds = ctx.measureText(symbol)
+  ctx.fillText(symbol, canvas.width / 2,
+    (canvas.height + bounds.actualBoundingBoxAscent - bounds.actualBoundingBoxDescent) / 2)
+  const tile = document.createElement('canvas')
+  tile.width = tile.height = size
+  const sample = tile.getContext('2d')
+  sample.imageSmoothingQuality = 'high'
+  sample.drawImage(canvas, 0, 0, size, size)
+  const {data} = sample.getImageData(0, 0, size, size)
+  const palette = {}, colors = new Map(), rows = []
+  for (let y = 0; y < size; y++) {
+    let row = ''
+    for (let x = 0; x < size; x++) {
+      const i = 4 * (y * size + x)
+      if (data[i + 3] < 60) { row += '.'; continue }
+      const color = '#' + [...data.slice(i, i + 3)].map(v => v.toString(16).padStart(2, '0')).join('')
+      if (!colors.has(color)) {
+        const key = String.fromCharCode(0x100 + colors.size)
+        colors.set(color, key)
+        palette[key] = color
+      }
+      row += colors.get(color)
+    }
+    rows.push(row)
+  }
+  check(colors.size, 'This picture could not be rendered.')
+  return {rows, palette}
+}
+function findDrawingSpace(sh, sheet, height, width) {
+  for (let c = 0; c + width <= sh.getMaxColumns(); c++) {
+    for (let r = 0; r + height <= sh.getMaxRows();) {
+      const merge = sheet.mergeData?.find(m => m.startRow < r + height && m.endRow >= r &&
+        m.startColumn < c + width && m.endColumn >= c)
+      if (merge) { r = merge.endRow + 1; continue }
+      let occupied = -1
+      for (let y = r + height - 1; y >= r; y--) {
+        if (Object.keys(sheet.cellData?.[y] || {}).some(x => +x >= c && +x < c + width)) {
+          occupied = y
+          break
+        }
+      }
+      if (occupied === -1) return col(c) + (r + 1)
+      r = occupied + 1
+    }
+  }
+  throw Error('There is no empty area large enough for the picture. Specify a starting cell.')
+}
+function paintPattern(sh, action) {
+  const sheetData = sh.getSheet().getSnapshot()
   const face = action.value ?? '#ffcc33'
   const rgb = [1, 3, 5].map(i => parseInt(String(face).slice(i, i + 2), 16))
   const light = rgb[0] * .299 + rgb[1] * .587 + rgb[2] * .114
   const smiley = action.op === 'smiley'
-  const rows = smiley ? ['..FFF..', '.FFFFF.', 'FFIFIFF', 'FFFFFFF', 'FIFFFIF', '.FIIIF.', '..FFF..'] : action.rows
-  const palette = smiley ? { F: face, I: light < 106 ? '#fafafa' : '#202020' } : action.palette
+  const pattern = action.op === 'paintIcon' ? iconPixels(action.symbol) : action
+  const rows = smiley ? ['..FFF..', '.FFFFF.', 'FFIFIFF', 'FFFFFFF', 'FIFFFIF', '.FIIIF.', '..FFF..'] : pattern.rows
+  const palette = smiley ? { F: face, I: light < 106 ? '#fafafa' : '#202020' } : pattern.palette
   check(Array.isArray(rows) && rows.length && rows.length <= 32 && typeof rows[0] === 'string',
     'The drawing needs between 1 and 32 rows.')
   const width = rows[0].length
   check(width > 0 && width <= 32 && rows.every(row => typeof row === 'string' && row.length === width &&
     [...row].every(c => c === '.' || /^#[a-f0-9]{6}$/i.test(palette?.[c]))), 'Check the drawing size and color palette.')
-  const r = range.getRow(), c = range.getColumn()
+  const address = action.range === 'auto' ? findDrawingSpace(sh, sheetData, rows.length, width) : action.range
+  check(typeof address === 'string' && /^[A-Z]{1,3}[1-9]\d{0,4}(:[A-Z]{1,3}[1-9]\d{0,4})?$/i.test(address),
+    'The proposed drawing address is invalid.')
+  const range = sh.getRange(address), r = range.getRow(), c = range.getColumn()
   check(r + rows.length <= sh.getMaxRows() && c + width <= sh.getMaxColumns(), 'The drawing extends beyond the sheet.')
-  if (!Object.keys(sheetData?.cellData || {}).length && !Object.keys(sheetData?.columnData || {}).length)
-    sh.setColumnWidths(c, width, sh.getRowHeight(r))
+  const usedColumns = new Set(Object.values(sheetData.cellData || {}).flatMap(row => Object.keys(row)))
+  for (let x = c; x < c + width; x++)
+    if (!sheetData.columnData?.[x] && !usedColumns.has(String(x)) &&
+        !sheetData.mergeData?.some(m => m.startColumn <= x && m.endColumn >= x))
+      sh.setColumnWidth(x, sh.getRowHeight(r))
   rows.forEach((line, dy) => {
     for (let x = 0; x < width;) {
       const symbol = line[x], start = x++
@@ -183,6 +246,7 @@ function paintPattern(sh, range, action, sheetData) {
       if (symbol !== '.') sh.getRange(r + dy, c + start, 1, x - start).setBackgroundColor(palette[symbol])
     }
   })
+  return col(c) + (r + 1)
 }
 export function applyPlan(grid, actions) {
   const prior = grid.snapshot()
@@ -238,16 +302,16 @@ export function applyPlan(grid, actions) {
         else sh[a.op](a.index - 1, a.count)
         continue
       }
+      if (['paintIcon', 'smiley', 'pixelArt'].includes(a.op)) {
+        a.range = paintPattern(sh, a)
+        continue
+      }
       check(
         typeof a.range === 'string' &&
           /^[A-Z]{1,3}[1-9]\d{0,4}(:[A-Z]{1,3}[1-9]\d{0,4})?$/i.test(a.range),
         'The proposed cell address is invalid.',
       )
       let range = sh.getRange(a.range)
-      if (a.op === 'smiley' || a.op === 'pixelArt') {
-        paintPattern(sh, range, a, sh.getSheet().getSnapshot())
-        continue
-      }
       if (a.op === 'write') {
         const matrix = a.values
         check(

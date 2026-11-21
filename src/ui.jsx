@@ -73,6 +73,7 @@ function Modal({ title, children, onClose }) {
   useEffect(() => {
     const d = ref.current
     d.showModal()
+    d.querySelector('.confirmActions button')?.focus({ preventScroll: true })
     return () => d.close()
   }, [])
   return (
@@ -347,6 +348,7 @@ const operationNames = {
   fill: 'Fill color',
   smiley: 'Paint smiley',
   pixelArt: 'Paint cells',
+  paintIcon: 'Paint picture',
   align: 'Alignment',
   addSheet: 'Add sheet',
   renameSheet: 'Rename sheet',
@@ -482,8 +484,12 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
         if (JSON.stringify(grid.current.snapshot().sheets) !== base)
           throw Error('The sheet changed during this request. Send the request again to use the current data.')
         applyPlan(grid.current, reply.actions)
+        if (JSON.stringify(grid.current.snapshot().sheets) === base) {
+          reply.actions = []
+          reply.message = 'The proposed edit would leave the sheet unchanged.'
+        }
         const destination = reply.actions.findLast(a => a.range)
-        setActivity({ range: destination?.range, sheet: destination?.sheet, done: true })
+        setActivity(destination ? { range: destination.range, sheet: destination.sheet, done: true } : null)
       } else setActivity(null)
       setHistory([...old, user, {
         role: 'assistant',
@@ -570,7 +576,6 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
             {divider}
             <header>
               <h2>Invoicity Agent</h2>
-              <IconButton title="Chat context" disabled={busy} onClick={() => setModal('context')}><Database size={16}/></IconButton>
               <IconButton title="Close chat" onClick={() => setChatOpen(false)}><X size={20} /></IconButton>
             </header>
             <div className="conversation" ref={body}>
@@ -675,6 +680,9 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
                     }}
                   >
                     <Paperclip size={17} />
+                  </IconButton>
+                  <IconButton title="Chat context" disabled={busy} onClick={() => setModal('context')}>
+                    <Database size={17} />
                   </IconButton>
                   <button
                     className="send"
