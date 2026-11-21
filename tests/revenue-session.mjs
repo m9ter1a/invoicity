@@ -54,6 +54,7 @@ try {
     })
   }
   const numberIn = (text, value) => new RegExp('(?<![0-9])' + value + '(?![0-9])').test(text.replace(/(?<=\d)[,\s\u00a0](?=\d{3}\b)/g,''))
+  await button('Get started').click()
   await button('Skip tour').click()
   await app.evaluate(({dialog}, file) => { dialog.showOpenDialog = async () => ({filePaths:[file]}) }, input)
   await button('Import a file').click()
