@@ -9,15 +9,15 @@ for points in [16, 32, 128, 256, 512] {
             let t = AffineTransform(scale: CGFloat(size) / 1024)
             (t as NSAffineTransform).concat()
             let bg = NSBezierPath(roundedRect: NSRect(x: 62, y: 62, width: 900, height: 900), xRadius: 205, yRadius: 205)
-            NSColor(white: 0.09, alpha: 1).setFill()
+            NSColor.black.setFill()
             bg.fill()
-            NSColor(white: 0.94, alpha: 1).setFill()
-            for (x, y, h) in [(294, 258, 255), (452, 337, 360), (610, 516, 255)] {
-                let p = NSBezierPath()
-                p.move(to: NSPoint(x: x, y: y)); p.line(to: NSPoint(x: x + 120, y: y + 52))
-                p.line(to: NSPoint(x: x + 120, y: y + h + 52)); p.line(to: NSPoint(x: x, y: y + h))
-                p.close(); p.fill()
-            }
+            let smile = NSAttributedString(string: "=)", attributes: [
+                .font: NSFont.monospacedSystemFont(ofSize: 375, weight: .medium),
+                .foregroundColor: NSColor.white
+            ])
+            let bounds = smile.boundingRect(with: NSSize(width: 900, height: 900),
+                                             options: [.usesDeviceMetrics])
+            smile.draw(at: NSPoint(x: 512 - bounds.midX, y: 512 - bounds.midY))
             return true
         }
         var rect = NSRect(origin: .zero, size: image.size)
