@@ -21,6 +21,7 @@ import {
   Grid2X2,
 } from 'lucide-react'
 import { Mark, ChatLauncher, useChatWidth } from './chat-controls'
+import { Onboarding, ThemeSwitch } from './onboarding'
 import { mountGrid, context, applyPlan } from './grid'
 import '@fontsource/inter/400.css'
 import '@fontsource/inter/500.css'
@@ -84,6 +85,17 @@ function Modal({ title, children, onClose }) {
   )
 }
 function App() {
+  const [theme, setTheme] = useState(() => localStorage.getItem('appearance') === 'dark' ? 'dark' : 'light')
+  const [tour, setTour] = useState(() => !localStorage.getItem('welcome-complete'))
+  const finishTour = () => {
+    localStorage.setItem('welcome-complete', '1')
+    setTour(false)
+  }
+  useLayoutEffect(() => {
+    document.documentElement.dataset.theme = theme
+    localStorage.setItem('appearance', theme)
+    api.setAppearance(theme).catch(notify)
+  }, [theme])
   const [items, setItems] = useState([]),
     [book, setBook] = useState(null),
     [query, setQuery] = useState(''),
@@ -128,7 +140,10 @@ function App() {
     setLoading(true)
     try {
       const b = await load()
-      if (b) setBook(b)
+      if (b) {
+        setBook(b)
+        if (tour) finishTour()
+      }
     } catch (e) {
       notify(e)
     } finally {
@@ -150,9 +165,14 @@ function App() {
   )
   return (
     <>
-      {book ? (
+      {tour ? (
+        <Onboarding theme={theme} onTheme={setTheme} onFinish={finishTour} loading={loading}
+          onOpen={method => open(() => api[method]())} />
+      ) : book ? (
         <Editor
           key={book.id}
+          theme={theme}
+          onTheme={setTheme}
           initial={book}
           home={home}
           flush={flush}
@@ -167,6 +187,7 @@ function App() {
                 <Mark />
                 invoicity
               </div>
+              <ThemeSwitch theme={theme} onChange={setTheme} />
             </div>
             <div className="homeInner">
               <header className="homeTitle">
@@ -207,6 +228,12 @@ function App() {
                     />
                     <kbd>⌘ K</kbd>
                   </label>
+                </div>
+                <div className="documentFilters" role="group" aria-label="Filter documents">
+                  <button aria-pressed={!bookmarked} onClick={() => setBookmarked(false)}>All</button>
+                  <button aria-pressed={bookmarked} onClick={() => setBookmarked(true)}>
+                    <Bookmark size={15} aria-hidden="true" /> Bookmarked
+                  </button>
                 </div>
                 <div className="records">
                   <div className="listHead">
@@ -271,12 +298,6 @@ function App() {
                     </div>
                   )}
                 </div>
-                <div className="documentFilters" role="group" aria-label="Filter documents">
-                  <button aria-pressed={!bookmarked} onClick={() => setBookmarked(false)}>All</button>
-                  <button aria-pressed={bookmarked} onClick={() => setBookmarked(true)}>
-                    <Bookmark size={15} aria-hidden="true" /> Bookmarked
-                  </button>
-                </div>
               </section>
             </div>
           </main>
@@ -321,7 +342,7 @@ function AgentCursor() {
   return <span className="agentCursor" aria-hidden="true"><MousePointer2 size={22} fill="#fafafa" stroke="#151515" /></span>
 }
 
-function Editor({ initial, home, flush, notify, model }) {
+function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
   const record = useRef(initial),
     grid = useRef(null),
     host = useRef(null),
@@ -384,7 +405,7 @@ function Editor({ initial, home, flush, notify, model }) {
   useLayoutEffect(() => {
     live.current = true
     try {
-      grid.current = mountGrid(host.current, initial.snapshot, dirty)
+      grid.current = mountGrid(host.current, initial.snapshot, dirty, theme === 'dark')
       setReady(true)
     } catch (e) {
       setFailed(cleanError(e))
@@ -398,6 +419,7 @@ function Editor({ initial, home, flush, notify, model }) {
       grid.current = null
     }
   }, [])
+  useLayoutEffect(() => { grid.current?.setDark(theme === 'dark') }, [theme])
   useEffect(() => {
     if (body.current) body.current.scrollTop = body.current.scrollHeight
   }, [messages, busy])
@@ -480,6 +502,7 @@ function Editor({ initial, home, flush, notify, model }) {
           }}
         />
         <div className="spacer" />
+        <ThemeSwitch theme={theme} onChange={onTheme} />
         <button
           disabled={!ready}
           className="barAction"
@@ -507,14 +530,13 @@ function Editor({ initial, home, flush, notify, model }) {
           <aside className="copilot" id="invoicity-chat" aria-label="Invoicity chat" style={{ width }}>
             {divider}
             <header>
-              <Mark />
-              <h2>Invoicity</h2>
+              <h2>Invoicity Agent</h2>
               <IconButton title="Close chat" onClick={() => setChatOpen(false)}><X size={20} /></IconButton>
             </header>
             <div className="conversation" ref={body}>
               {!messages.length && (
                 <div className="hello">
-                  <h3>What would you<br />like to work on?</h3>
+                  <h3>What would you like to work <span className="greetingEnd">on? =)</span></h3>
                   <div className="suggestions">
                     {['Review this invoice', 'Explain the total'].map((p) => (
                       <button disabled={!ready || !model.installed} key={p} onClick={() => ask(p)}>

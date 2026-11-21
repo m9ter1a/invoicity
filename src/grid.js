@@ -43,10 +43,10 @@ const theme = {
   purple: neutral,
   pink: neutral,
 }
-export function mountGrid(container, snapshot, onChange) {
+export function mountGrid(container, snapshot, onChange, darkMode) {
   const { univer, univerAPI: api } = createUniver({
     locale: LocaleType.EN_US,
-    darkMode: true,
+    darkMode,
     theme,
     locales: { [LocaleType.EN_US]: mergeLocales(coreEn, filterEn, sortEn) },
     presets: [
@@ -64,6 +64,7 @@ export function mountGrid(container, snapshot, onChange) {
       return book
     },
     snapshot: () => book.save(),
+    setDark: dark => api.toggleDarkMode(dark),
     async finish() {
       await book.endEditingAsync(true)
       await api.getFormula().onCalculationResultApplied(15000)
