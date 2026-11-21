@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 let output = URL(fileURLWithPath: CommandLine.arguments[1])
 try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+let smile = try NSImage(data: Data(contentsOf: URL(fileURLWithPath: "src/smile.svg")))!
 for points in [16, 32, 128, 256, 512] {
     for scale in [1, 2] {
         let size = points * scale
@@ -11,13 +12,8 @@ for points in [16, 32, 128, 256, 512] {
             let bg = NSBezierPath(roundedRect: NSRect(x: 62, y: 62, width: 900, height: 900), xRadius: 205, yRadius: 205)
             NSColor.black.setFill()
             bg.fill()
-            let smile = NSAttributedString(string: "=)", attributes: [
-                .font: NSFont.monospacedSystemFont(ofSize: 375, weight: .medium),
-                .foregroundColor: NSColor.white
-            ])
-            let bounds = smile.boundingRect(with: NSSize(width: 900, height: 900),
-                                             options: [.usesDeviceMetrics])
-            smile.draw(at: NSPoint(x: 512 - bounds.midX, y: 512 - bounds.midY))
+            smile.draw(in: NSRect(x: 176, y: 176, width: 672, height: 672),
+                       from: .zero, operation: .sourceOver, fraction: 1)
             return true
         }
         var rect = NSRect(origin: .zero, size: image.size)
