@@ -1,0 +1,86 @@
+name: Desktop release
+on: workflow_dispatch
+permissions:
+  contents: read
+concurrency: desktop-release
+
+jobs:
+  draft:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v$(node -p "require('./package.json').version")"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            test "$(gh release view "$tag" --json isDraft --jq .isDraft)" = true
+            test "$(gh release view "$tag" --json targetCommitish --jq .targetCommitish)" = "$GITHUB_SHA"
+          else
+            gh release create "$tag" --draft --target "$GITHUB_SHA" --title "Invoicity $tag" --notes "Offline desktop builds. Download both parts for your platform and its SHA-256 file. Join the parts as described in the README before opening the archive or installing the Debian package."
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+  build:
+    needs: draft
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {runner: macos-15, target: darwin}
+          - {runner: windows-2025, target: win32}
+          - {runner: ubuntu-24.04, target: linux}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npm test
+      - run: node scripts/prepare-target.mjs ${{ matrix.target }}
+      - run: npm run package -- ${{ matrix.target }}
+      - name: Verify packaged desktop app, local OCR and inference
+        run: |
+          if [[ "$RUNNER_OS" = Linux ]]; then
+            xvfb-run -a node tests/platform.mjs
+          else
+            node tests/platform.mjs
+          fi
+      - name: Archive and verify distribution
+        run: |
+          # The staged models have already been copied into the verified bundle.
+          node -e "require('fs').rmSync('vendor',{recursive:true,force:true})"
+          python scripts/distribute.py ${{ matrix.target }} --split
+          case "$RUNNER_OS" in
+            Linux) dpkg-deb --info release/downloads/*.deb && dpkg-deb --contents release/downloads/*.deb > /dev/null ;;
+            macOS) codesign --verify --deep --strict release/Invoicity-darwin-arm64/Invoicity.app && tar -tzf release/downloads/*.tar.gz > /dev/null ;;
+            Windows) 7z t release/downloads/*.zip ;;
+          esac
+      - name: Upload distribution to private draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.draft.outputs.tag }}
+        run: gh release upload "$TAG" release/downloads/*.part* release/downloads/*.sha256 --clobber
+  publish:
+    needs: [draft, build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.draft.outputs.tag }}
+        run: gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false
