@@ -103,8 +103,8 @@ handle('flushDone', (ok) => {
 })
 handle('list', () => db.list())
 handle('read', (id) => db.read(id))
-handle('create', (kind, name) => {
-  const book = createBook(kind, name)
+handle('create', () => {
+  const book = createBook()
   db.save(book)
   return book
 })
