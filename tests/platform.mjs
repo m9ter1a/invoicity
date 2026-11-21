@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
 import { mkdtemp } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
@@ -7,6 +8,9 @@ import { _electron as electron } from 'playwright-core'
 const isMac = process.platform === 'darwin', windows = process.platform === 'win32'
 const bundle = path.resolve('release', 'Invoicity-'+process.platform+'-'+(isMac ? 'arm64' : 'x64'))
 const binary = path.join(bundle, isMac ? 'Invoicity.app/Contents/MacOS/Invoicity' : windows ? 'Invoicity.exe' : 'Invoicity')
+const resources = path.join(bundle, isMac ? 'Invoicity.app/Contents/Resources' : 'resources')
+const runtime = path.join(resources,'vendor','llama')
+execFileSync(path.join(runtime,windows ? 'llama-server.exe' : 'llama-server'), ['--version'], {cwd:runtime,stdio:'inherit'})
 const temp = await mkdtemp(path.join(os.tmpdir(),'invoicity-platform-'))
 const app = await electron.launch({executablePath:binary,args:['--user-data-dir='+temp],timeout:90000})
 try {
@@ -56,7 +60,9 @@ try {
   console.log('PASS offline PDF and image extraction, both themes and button geometry')
   await cell.fill('In J4 type "platform test"')
   await cell.press('Enter')
-  await page.locator('.actionDetails summary',{hasText:/Applied/}).waitFor({timeout:420000})
+  const reply = page.locator('.msg.assistant').last()
+  await reply.waitFor({timeout:420000})
+  assert.match(await reply.innerText(), /Applied/, 'Local agent failed to write the test value')
   await button('Back to documents').click()
   const value = await page.evaluate(async () => {
     const [item] = await window.localDesk.list()
