@@ -20,7 +20,7 @@ jobs:
           tag="v$(node -p "require('./package.json').version")"
           if gh release view "$tag" >/dev/null 2>&1; then
             test "$(gh release view "$tag" --json isDraft --jq .isDraft)" = true
-            test "$(gh release view "$tag" --json targetCommitish --jq .targetCommitish)" = "$GITHUB_SHA"
+            gh release edit "$tag" --target "$GITHUB_SHA"
           else
             gh release create "$tag" --draft --target "$GITHUB_SHA" --title "Invoicity $tag" --notes "Offline desktop builds. Download both parts for your platform and its SHA-256 file. Join the parts as described in the README before opening the archive or installing the Debian package."
           fi
