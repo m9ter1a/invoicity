@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
-  Star,
+  Bookmark,
+  MousePointer2,
   Plus,
   Upload,
   Search,
@@ -14,14 +15,12 @@ import {
   Paperclip,
   ArrowUp,
   X,
-  ShieldCheck,
-  PanelRightClose,
-  PanelRightOpen,
   FileText,
   LoaderCircle,
   ArrowDownToLine,
   Grid2X2,
 } from 'lucide-react'
+import { Mark, ChatLauncher, useChatWidth } from './chat-controls'
 import { mountGrid, context, applyPlan } from './grid'
 import '@fontsource/inter/400.css'
 import '@fontsource/inter/500.css'
@@ -51,9 +50,6 @@ const icons = {
   invoice: FileText,
   register: Rows3,
   import: FileSpreadsheet,
-}
-function Mark() {
-  return <span className="mark" aria-hidden="true">=)</span>
 }
 function IconButton({ title, children, ...props }) {
   return (
@@ -91,6 +87,7 @@ function App() {
   const [items, setItems] = useState([]),
     [book, setBook] = useState(null),
     [query, setQuery] = useState(''),
+    [bookmarked, setBookmarked] = useState(false),
     [model, setModel] = useState({}),
     [error, setError] = useState(''),
     [loading, setLoading] = useState(false)
@@ -149,7 +146,7 @@ function App() {
   }
   const searchTerm = query.trim().toLocaleLowerCase('en-US')
   const records = items.filter((item) =>
-    item.name.toLocaleLowerCase('en-US').includes(searchTerm),
+    (!bookmarked || item.star) && item.name.toLocaleLowerCase('en-US').includes(searchTerm),
   )
   return (
     <>
@@ -238,7 +235,7 @@ function App() {
                         <time>{prettyTime(i.updated)}</time>
                         <IconButton
                           aria-pressed={Boolean(i.star)}
-                          title={i.star ? 'Unstar document' : 'Star document'}
+                          title={i.star ? 'Remove bookmark' : 'Bookmark document'}
                           onClick={async () => {
                             try {
                               await api.toggleStar(i.id)
@@ -248,8 +245,8 @@ function App() {
                             }
                           }}
                         >
-                          <Star
-                            size={15}
+                          <Bookmark
+                            size={18}
                             fill={i.star ? 'currentColor' : 'none'}
                           />
                         </IconButton>
@@ -260,7 +257,7 @@ function App() {
                     <div className="empty">
                       {searchTerm
                         ? 'No matching documents.'
-                        : 'Create a spreadsheet or import a file to get started.'}
+                        : bookmarked ? 'No bookmarked documents yet.' : 'Create a spreadsheet or import a file to get started.'}
                       {searchTerm && (
                         <button
                           onClick={() => {
@@ -273,6 +270,12 @@ function App() {
                       )}
                     </div>
                   )}
+                </div>
+                <div className="documentFilters" role="group" aria-label="Filter documents">
+                  <button aria-pressed={!bookmarked} onClick={() => setBookmarked(false)}>All</button>
+                  <button aria-pressed={bookmarked} onClick={() => setBookmarked(true)}>
+                    <Bookmark size={15} aria-hidden="true" /> Bookmarked
+                  </button>
                 </div>
               </section>
             </div>
@@ -314,6 +317,10 @@ const operationNames = {
   freezeRows: 'Freeze rows',
   freezeColumns: 'Freeze columns',
 }
+function AgentCursor() {
+  return <span className="agentCursor" aria-hidden="true"><MousePointer2 size={22} fill="#fafafa" stroke="#151515" /></span>
+}
+
 function Editor({ initial, home, flush, notify, model }) {
   const record = useRef(initial),
     grid = useRef(null),
@@ -330,9 +337,29 @@ function Editor({ initial, home, flush, notify, model }) {
     [chatOpen, setChatOpen] = useState(true),
     [modal, setModal] = useState(''),
     [format, setFormat] = useState('xlsx'),
-    [audit, setAudit] = useState(null),
+    [activity, setActivity] = useState(null),
     [ready, setReady] = useState(false),
     [failed, setFailed] = useState('')
+  const { width, divider } = useChatWidth()
+  const messageInput = useRef(null)
+  useEffect(() => {
+    if (!activity || !grid.current) return
+    const book = grid.current.book
+    const sheet = book.getActiveSheet()
+    const range = activity.range && (!activity.sheet || activity.sheet === sheet.getSheetName())
+      ? sheet.getRange(activity.range) : book.getActiveRange()
+    if (activity.done && activity.range && range && (!activity.sheet || activity.sheet === sheet.getSheetName())) {
+      const row = range.getRow(), column = range.getColumn()
+      const views = sheet.getVisibleRangesOfAllViewports()
+      if (views && ![...views.values()].some(r => row >= r.startRow && row <= r.endRow && column >= r.startColumn && column <= r.endColumn))
+        sheet.scrollToCell(row, column)
+    }
+    const cursor = range?.attachPopup({
+      componentKey: AgentCursor, direction: 'bottom-left', constrainToCanvas: true, offset: [3, 0],
+    })
+    const expiry = activity.done ? setTimeout(() => setActivity(null), 950) : null
+    return () => { clearTimeout(expiry); cursor?.dispose() }
+  }, [activity])
   const setHistory = (msgs) => {
     record.current.messages = msgs
     setMessages(msgs)
@@ -396,6 +423,7 @@ function Editor({ initial, home, flush, notify, model }) {
     try {
       await grid.current.finish()
       const base = JSON.stringify(grid.current.snapshot().sheets)
+      setActivity({})
       const reply = await api.chat({
         question: user.text,
         context: context(grid.current),
@@ -409,7 +437,9 @@ function Editor({ initial, home, flush, notify, model }) {
         if (JSON.stringify(grid.current.snapshot().sheets) !== base)
           throw Error('The sheet changed during this request. Send the request again to use the current data.')
         applyPlan(grid.current, reply.actions)
-      }
+        const destination = reply.actions.findLast(a => a.range)
+        setActivity({ range: destination?.range, sheet: destination?.sheet, done: true })
+      } else setActivity(null)
       setHistory([...old, user, {
         role: 'assistant',
         text: reply.message,
@@ -419,21 +449,13 @@ function Editor({ initial, home, flush, notify, model }) {
       await save().catch(notify)
     } catch (e) {
       if (live.current) {
+        setActivity(null)
         setHistory([...old, user, { role: 'assistant', text: cleanError(e) }])
         setText(user.text)
         setFiles(files)
       }
     } finally {
       if (live.current) setBusy(false)
-    }
-  }
-  async function checkBook() {
-    try {
-      await grid.current.finish()
-      setAudit(await api.audit(grid.current.snapshot()))
-      setModal('audit')
-    } catch (e) {
-      notify(e)
     }
   }
   return (
@@ -458,10 +480,6 @@ function Editor({ initial, home, flush, notify, model }) {
           }}
         />
         <div className="spacer" />
-        <button disabled={!ready} className="barAction" onClick={checkBook}>
-          <ShieldCheck size={16} />
-          Check invoice
-        </button>
         <button
           disabled={!ready}
           className="barAction"
@@ -470,16 +488,15 @@ function Editor({ initial, home, flush, notify, model }) {
           <Download size={15} />
           Export
         </button>
-        <IconButton
-          title={chatOpen ? 'Hide Invoicity chat' : 'Open Invoicity chat'}
-          onClick={() => setChatOpen(!chatOpen)}
-        >
-          {chatOpen ? <PanelRightClose /> : <PanelRightOpen />}
-        </IconButton>
       </div>
       <div className="studioBody">
         <div className="gridWrap">
           <div ref={host} className="gridHost" />
+          {(busy || activity) && <div className="agentGlow" aria-hidden="true" />}
+          {!chatOpen && <ChatLauncher onOpen={() => {
+            setChatOpen(true)
+            requestAnimationFrame(() => messageInput.current?.focus())
+          }} />}
           {failed && (
             <div className="gridError" role="alert">
               Could not open the editor. {failed}
@@ -487,10 +504,12 @@ function Editor({ initial, home, flush, notify, model }) {
           )}
         </div>
         {chatOpen && (
-          <aside className="copilot" aria-label="Invoicity chat">
+          <aside className="copilot" id="invoicity-chat" aria-label="Invoicity chat" style={{ width }}>
+            {divider}
             <header>
               <Mark />
               <h2>Invoicity</h2>
+              <IconButton title="Close chat" onClick={() => setChatOpen(false)}><X size={20} /></IconButton>
             </header>
             <div className="conversation" ref={body}>
               {!messages.length && (
@@ -563,6 +582,7 @@ function Editor({ initial, home, flush, notify, model }) {
               ))}
               <div className="composer">
                 <textarea
+                  ref={messageInput}
                   aria-label="Message Invoicity"
                   placeholder="Message Invoicity…"
                   maxLength={2500}
@@ -660,29 +680,6 @@ function Editor({ initial, home, flush, notify, model }) {
             <ArrowDownToLine size={16} />
             Save file
           </button>
-        </Modal>
-      )}
-      {modal === 'audit' && audit && (
-        <Modal title="Invoice check" onClose={() => setModal('')}>
-          <div className="auditResult">
-            <ShieldCheck />
-            <b>
-              {audit.issues.length
-                ? 'Issues found: ' + audit.issues.length
-                : audit.tested
-                  ? 'No discrepancies found'
-                  : 'No invoice fields detected'}
-            </b>
-          </div>
-          <p>
-            Checked formulas and recognized invoice fields. Field and line
-            checks completed: {audit.tested}.
-          </p>
-          {audit.issues.map((s, i) => (
-            <p className="issue" key={i}>
-              {s}
-            </p>
-          ))}
         </Modal>
       )}
     </div>
