@@ -112,7 +112,7 @@ await cp('vendor/llama', path.join(vendor, 'llama'), {
     ['llama-server', 'LICENSE'].includes(path.basename(p)),
 })
 await copyFile('vendor/extract', path.join(vendor, 'extract'))
-for (const f of ['nemotron.gguf', 'NVIDIA-License.pdf'])
+for (const f of ['nemotron.gguf', 'NVIDIA-License.pdf', 'SmolVLM-500M-Instruct-Q8_0.gguf', 'mmproj-SmolVLM-500M-Instruct-Q8_0.gguf', 'SmolVLM-LICENSE.txt'])
   await copyFile('vendor/models/' + f, path.join(vendor, 'models', f))
 execFileSync('codesign', ['--force', '--deep', '--sign', '-', app], {
   stdio: 'inherit',

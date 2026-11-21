@@ -26,3 +26,5 @@ if [[ ! -s vendor/models/NVIDIA-License.pdf ]]; then
 fi
 swiftc -O scripts/extract.swift -o vendor/extract
 
+
+bash scripts/prepare-vision.sh
