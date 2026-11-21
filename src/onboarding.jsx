@@ -1,5 +1,5 @@
 import React, { useLayoutEffect, useRef, useState } from 'react'
-import { ArrowLeft, ArrowRight, Check, Moon, Plus, Sun, Upload } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Moon, Sun } from 'lucide-react'
 import { Mark } from './chat-controls'
 
 export function ThemeSwitch({ theme, onChange }) {
@@ -9,42 +9,66 @@ export function ThemeSwitch({ theme, onChange }) {
     onClick={() => onChange(dark ? 'light' : 'dark')}>{dark ? <Sun size={18} /> : <Moon size={18} />}</button>
 }
 
-export function Onboarding({ theme, onTheme, onFinish, onOpen, loading }) {
-  const [step, setStep] = useState(0)
-  const heading = useRef(null)
-  useLayoutEffect(() => { heading.current?.focus() }, [step])
-  const titles = ['Welcome to Invoicity.', 'Choose your appearance.', 'Open your first sheet.']
-  const descriptions = [
-    'Create invoices and work with your AI agent. Your files and conversations stay on this Mac.',
-    'Choose how your workspace looks. You can switch themes at any time.',
-    'Start with a blank spreadsheet or import a file. Invoicity Agent opens alongside it.',
-  ]
+export function Onboarding({ onStart, onFinish }) {
   return <main className="tour" aria-label="Welcome tour">
-    <header className="tourTop">
-      <span className="tourProgress" aria-label={'Step ' + (step + 1) + ' of 3'}>
-        {[0, 1, 2].map(i => <i key={i} className={i <= step ? 'filled' : ''} />)}
-      </span>
-      <button disabled={loading} onClick={onFinish} className="tourSkip">Skip tour</button>
-    </header>
-    <section className={'tourContent step' + step} key={step}>
-      {step === 0 && <div className="tourMark"><Mark /></div>}
-      <h1 tabIndex={-1} ref={heading}>{titles[step]}</h1>
-      <p>{descriptions[step]}</p>
-      {step === 1 && <div className="themeChoices" role="group" aria-label="Appearance">
-        {['light', 'dark'].map(value => <button key={value} aria-pressed={theme === value}
-          className={'themeChoice ' + value} onClick={() => onTheme(value)}>
-          {value === 'light' ? <Sun /> : <Moon />}
-          <span>{value === 'light' ? 'Light' : 'Dark'}</span>
-          {theme === value && <Check size={16} />}
-        </button>)}
-      </div>}
-      {step < 2 ? <button className="tourPrimary" onClick={() => setStep(step + 1)}>
-        {step === 0 ? 'Get started' : 'Continue'} <ArrowRight size={17} />
-      </button> : <div className="tourActions">
-        <button className="tourPrimary" disabled={loading} onClick={() => onOpen('create')}><Plus size={18} /> New spreadsheet</button>
-        <button className="tourSecondary" disabled={loading} onClick={() => onOpen('importFile')}><Upload size={17} /> Import a file</button>
-      </div>}
+    <header className="tourTop"><button onClick={onFinish} className="tourSkip">Skip tour</button></header>
+    <section className="tourContent step0">
+      <div className="tourMark"><Mark /></div><h1>Welcome to Invoicity.</h1>
+      <p>Create invoices and work with your AI agent. Your files and conversations stay on this Mac.</p>
+      <button autoFocus className="tourPrimary" onClick={onStart}>Get started <ArrowRight size={17} /></button>
     </section>
-    <footer>{step > 0 && <button disabled={loading} onClick={() => setStep(step - 1)}><ArrowLeft size={15} /> Back</button>}</footer>
   </main>
+}
+
+const steps = [
+  ['.newCard', 'Create a spreadsheet', 'Start a blank workbook here. You can open it now or continue the tour.'],
+  ['.importCard', 'Import a file', 'Bring an existing Excel, OpenDocument or CSV file into this workspace.'],
+  ['.search', 'Find a document', 'Search your saved documents by name. You can also press ⌘K.'],
+  ['.documentFilters', 'Keep track of important files', 'Bookmark a document, then choose Bookmarked to find it here.'],
+]
+export function WorkspaceTour({ onFinish }) {
+  const [step, setStep] = useState(0), [position, setPosition] = useState(null)
+  const tip = useRef(null)
+  const [selector, title, description] = steps[step]
+  useLayoutEffect(() => {
+    const target = document.querySelector(selector)
+    const control = target.matches('button') ? target : target.querySelector('input, button')
+    target.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    control?.setAttribute('aria-describedby', 'tour-description')
+    function measure() {
+      const r = target.getBoundingClientRect()
+      const w = Math.min(330, window.innerWidth - 24), h = tip.current.offsetHeight
+      const below = r.bottom + 13
+      const top = below + h <= window.innerHeight - 12 ? below : Math.max(12, r.top - 13 - h)
+      setPosition({ x: r.x, y: r.y, width: r.width, height: r.height, top,
+        left: Math.min(window.innerWidth - w - 12, Math.max(12, r.x)), w })
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(target)
+    observer.observe(tip.current)
+    window.addEventListener('resize', measure)
+    window.addEventListener('scroll', measure, true)
+    const escape = e => { if (e.key === 'Escape') onFinish() }
+    window.addEventListener('keydown', escape)
+    return () => {
+      observer.disconnect()
+      control?.removeAttribute('aria-describedby')
+      window.removeEventListener('resize', measure)
+      window.removeEventListener('scroll', measure, true)
+      window.removeEventListener('keydown', escape)
+    }
+  }, [step])
+  return <>
+    {position && <div className="tourSpot" aria-hidden="true" style={{ left:position.x-4, top:position.y-4, width:position.width+8, height:position.height+8 }} />}
+    <aside className="tourTip" ref={tip} aria-label="Workspace tour" style={position ? {top:position.top,left:position.left,width:position.w} : {visibility:'hidden'}}>
+      <div className="tipTop"><small>Workspace tour · {step + 1} of {steps.length}</small><button onClick={onFinish}>Skip tour</button></div>
+      <h2>{title}</h2><p id="tour-description">{description}</p>
+      <div className="tipActions">{step > 0 && <button onClick={() => setStep(step - 1)}><ArrowLeft size={14}/> Back</button>}
+        <button className="tourPrimary" autoFocus onClick={() => step + 1 === steps.length ? onFinish() : setStep(step + 1)}>
+          {step + 1 === steps.length ? 'Finish tour' : 'Next'} <ArrowRight size={14}/>
+        </button>
+      </div>
+    </aside>
+  </>
 }

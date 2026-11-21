@@ -70,6 +70,7 @@ function storage(dir) {
     return book.updated
   }
   return {
+    file,
     read,
     save,
     list: () =>

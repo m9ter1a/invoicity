@@ -9,7 +9,7 @@ function normalizeWrite(action) {
   return action
 }
 
-function interpretReply(reply, question, activeSheet) {
+function interpretReply(reply, question, activeSheet, workbookName, sheets = []) {
   // An explicit, quoted single-cell command has an exact target and literal.
   // Resolve it even when the model only acknowledges the request or changes the text.
   const literal = /^\s*in\s+([a-z]{1,3}[1-9]\d{0,4})\s+type\s+"([^"\r\n]*)"\s*[.!]?\s*$/i.exec(question)
@@ -20,6 +20,14 @@ function interpretReply(reply, question, activeSheet) {
       actions: [{ op: 'write', sheet: activeSheet, range, values: [[literal[2]]] }],
     }
   }
-  return { ...reply, actions: reply.actions.map(normalizeWrite) }
+  const names = new Set(sheets)
+  const actions = reply.actions.map(action => {
+    // Small models sometimes use the workbook title as the active worksheet name.
+    if (action.sheet && action.sheet === workbookName && !names.has(action.sheet))
+      action = { ...action, sheet: activeSheet }
+    if (action.op === 'addSheet' || action.op === 'renameSheet') names.add(action.name)
+    return normalizeWrite(action)
+  })
+  return { ...reply, actions }
 }
 module.exports = { interpretReply }

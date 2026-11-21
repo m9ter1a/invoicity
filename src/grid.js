@@ -85,14 +85,36 @@ function col(n) {
     s = String.fromCharCode(65 + ((n - 1) % 26)) + s
   return s
 }
+function visibleColors(sheet) {
+  const view = sheet.getVisibleRange()
+  if (!view) return { rows: [] }
+  const { startRow, startColumn } = view
+  const height = Math.min(32, view.endRow - startRow + 1, sheet.getMaxRows() - startRow)
+  const width = Math.min(32, view.endColumn - startColumn + 1, sheet.getMaxColumns() - startColumn)
+  const range = sheet.getRange(startRow, startColumn, height, width)
+  const symbols = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+  const keys = new Map(), legend = {}
+  const rows = range.getBackgrounds().map(row => row.map(fill => {
+    if (!fill || /^#(?:fff|ffffff)$/i.test(fill)) return '.'
+    if (!keys.has(fill)) {
+      if (keys.size >= symbols.length) return '?'
+      const key = symbols[keys.size]
+      keys.set(fill, key)
+      legend[key] = fill
+    }
+    return keys.get(fill)
+  }).join(''))
+  return { origin: col(startColumn) + (startRow + 1), legend, rows }
+}
 export function context(grid) {
   const snap = grid.snapshot(),
     active = grid.book.getActiveSheet(),
     selection = grid.book.getActiveRange()?.getA1Notation() || 'A1'
   const result = {
-    name: snap.name,
+    workbookName: snap.name,
     active: active.getSheetName(),
     selection,
+    visual: visibleColors(active),
     sheets: snap.sheetOrder.map((id) => snap.sheets[id].name),
     cells: [],
     partial: false,
@@ -138,6 +160,30 @@ const check = (b, m) => {
 const validName = (s) =>
   typeof s === 'string' && s.trim() && s.length <= 31 && !/[\\/?*:\[\]]/.test(s)
 const integer = (v, min, max) => Number.isInteger(v) && v >= min && v <= max
+function paintPattern(sh, range, action, sheetData) {
+  const face = action.value ?? '#ffcc33'
+  const rgb = [1, 3, 5].map(i => parseInt(String(face).slice(i, i + 2), 16))
+  const light = rgb[0] * .299 + rgb[1] * .587 + rgb[2] * .114
+  const smiley = action.op === 'smiley'
+  const rows = smiley ? ['..FFF..', '.FFFFF.', 'FFIFIFF', 'FFFFFFF', 'FIFFFIF', '.FIIIF.', '..FFF..'] : action.rows
+  const palette = smiley ? { F: face, I: light < 106 ? '#fafafa' : '#202020' } : action.palette
+  check(Array.isArray(rows) && rows.length && rows.length <= 32 && typeof rows[0] === 'string',
+    'The drawing needs between 1 and 32 rows.')
+  const width = rows[0].length
+  check(width > 0 && width <= 32 && rows.every(row => typeof row === 'string' && row.length === width &&
+    [...row].every(c => c === '.' || /^#[a-f0-9]{6}$/i.test(palette?.[c]))), 'Check the drawing size and color palette.')
+  const r = range.getRow(), c = range.getColumn()
+  check(r + rows.length <= sh.getMaxRows() && c + width <= sh.getMaxColumns(), 'The drawing extends beyond the sheet.')
+  if (!Object.keys(sheetData?.cellData || {}).length && !Object.keys(sheetData?.columnData || {}).length)
+    sh.setColumnWidths(c, width, sh.getRowHeight(r))
+  rows.forEach((line, dy) => {
+    for (let x = 0; x < width;) {
+      const symbol = line[x], start = x++
+      while (x < width && line[x] === symbol) x++
+      if (symbol !== '.') sh.getRange(r + dy, c + start, 1, x - start).setBackgroundColor(palette[symbol])
+    }
+  })
+}
 export function applyPlan(grid, actions) {
   const prior = grid.snapshot()
   try {
@@ -198,6 +244,10 @@ export function applyPlan(grid, actions) {
         'The proposed cell address is invalid.',
       )
       let range = sh.getRange(a.range)
+      if (a.op === 'smiley' || a.op === 'pixelArt') {
+        paintPattern(sh, range, a, sh.getSheet().getSnapshot())
+        continue
+      }
       if (a.op === 'write') {
         const matrix = a.values
         check(

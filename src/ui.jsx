@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
   Bookmark,
+  Trash2,
+  BookOpen,
+  Database,
   MousePointer2,
   Plus,
   Upload,
@@ -21,7 +24,7 @@ import {
   Grid2X2,
 } from 'lucide-react'
 import { Mark, ChatLauncher, useChatWidth } from './chat-controls'
-import { Onboarding, ThemeSwitch } from './onboarding'
+import { Onboarding, ThemeSwitch, WorkspaceTour } from './onboarding'
 import { mountGrid, context, applyPlan } from './grid'
 import '@fontsource/inter/400.css'
 import '@fontsource/inter/500.css'
@@ -73,7 +76,7 @@ function Modal({ title, children, onClose }) {
     return () => d.close()
   }, [])
   return (
-    <dialog aria-label={title} ref={ref} onCancel={onClose}>
+    <dialog aria-label={title} ref={ref} onCancel={e => { e.preventDefault(); onClose() }}>
       <header>
         <h2>{title}</h2>
         <IconButton title="Close" onClick={onClose}>
@@ -86,10 +89,10 @@ function Modal({ title, children, onClose }) {
 }
 function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('appearance') === 'dark' ? 'dark' : 'light')
-  const [tour, setTour] = useState(() => !localStorage.getItem('welcome-complete'))
+  const [tour, setTour] = useState(() => localStorage.getItem('welcome-complete') ? '' : 'welcome')
   const finishTour = () => {
     localStorage.setItem('welcome-complete', '1')
-    setTour(false)
+    setTour('')
   }
   useLayoutEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -98,6 +101,7 @@ function App() {
   }, [theme])
   const [items, setItems] = useState([]),
     [book, setBook] = useState(null),
+    [deleting, setDeleting] = useState(null),
     [query, setQuery] = useState(''),
     [bookmarked, setBookmarked] = useState(false),
     [model, setModel] = useState({}),
@@ -165,9 +169,8 @@ function App() {
   )
   return (
     <>
-      {tour ? (
-        <Onboarding theme={theme} onTheme={setTheme} onFinish={finishTour} loading={loading}
-          onOpen={method => open(() => api[method]())} />
+      {tour === 'welcome' ? (
+        <Onboarding onStart={() => setTour('guide')} onFinish={finishTour} />
       ) : book ? (
         <Editor
           key={book.id}
@@ -187,7 +190,10 @@ function App() {
                 <Mark />
                 invoicity
               </div>
-              <ThemeSwitch theme={theme} onChange={setTheme} />
+              <div className="workspaceTools">
+                <IconButton title="Replay workspace tour" onClick={() => setTour('guide')}><BookOpen size={17} /></IconButton>
+                <ThemeSwitch theme={theme} onChange={setTheme} />
+              </div>
             </div>
             <div className="homeInner">
               <header className="homeTitle">
@@ -240,7 +246,7 @@ function App() {
                     <span>Name</span>
                     <span>Type</span>
                     <span>Last modified</span>
-                    <span />
+                    <span /><span />
                   </div>
                   {records.map((i) => {
                     const I = icons[i.kind] || Table2
@@ -277,6 +283,7 @@ function App() {
                             fill={i.star ? 'currentColor' : 'none'}
                           />
                         </IconButton>
+                        <IconButton title={'Delete ' + i.name} onClick={() => setDeleting(i)}><Trash2 size={16} /></IconButton>
                       </div>
                     )
                   })}
@@ -303,6 +310,18 @@ function App() {
           </main>
         </div>
       )}
+      {tour === 'guide' && !book && <WorkspaceTour onFinish={finishTour} />}
+      {deleting && <Modal title="Delete spreadsheet?" onClose={() => { if (!loading) setDeleting(null) }}>
+        <p>Move <strong>{deleting.name}</strong> and its chat history to the Mac Trash?</p>
+        <div className="confirmActions">
+          <button autoFocus disabled={loading} onClick={() => setDeleting(null)}>Cancel</button>
+          <button className="primary" disabled={loading} onClick={async () => {
+            setLoading(true)
+            try { await api.trashBook(deleting.id); setDeleting(null); await refresh() }
+            catch (e) { notify(e) } finally { setLoading(false) }
+          }}>Move to Trash</button>
+        </div>
+      </Modal>}
       {error && (
         <div className="toast" role="status">
           {error}
@@ -326,6 +345,8 @@ const operationNames = {
   sort: 'Sort',
   format: 'Number format',
   fill: 'Fill color',
+  smiley: 'Paint smiley',
+  pixelArt: 'Paint cells',
   align: 'Alignment',
   addSheet: 'Add sheet',
   renameSheet: 'Rename sheet',
@@ -438,6 +459,7 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
       role: 'user',
       text: prompt.trim(),
       files: files.map((x) => x.name),
+      sources: files,
     }
     setHistory([...old, user])
     setText('')
@@ -448,6 +470,7 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
       setActivity({})
       const reply = await api.chat({
         question: user.text,
+        view: host.current.getBoundingClientRect().toJSON(),
         context: context(grid.current),
         attachments: files,
         history: old,
@@ -479,6 +502,22 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
     } finally {
       if (live.current) setBusy(false)
     }
+  }
+  async function updateContext(mode) {
+    if (busy) return
+    setBusy(true)
+    const previous = record.current.messages
+    try {
+      const next = mode === 'clear' ? [] : [{role: 'summary', text: await api.compact(previous)}]
+      if (!live.current) return
+      record.current.messages = next
+      try { await save(true) }
+      catch (e) { record.current.messages = previous; dirty(); throw e }
+      setMessages(next)
+      if (mode === 'clear') { setText(''); setFiles([]) }
+      setModal('')
+    } catch (e) { notify(e) }
+    finally { if (live.current) setBusy(false) }
   }
   return (
     <div className="studio">
@@ -531,6 +570,7 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
             {divider}
             <header>
               <h2>Invoicity Agent</h2>
+              <IconButton title="Chat context" disabled={busy} onClick={() => setModal('context')}><Database size={16}/></IconButton>
               <IconButton title="Close chat" onClick={() => setChatOpen(false)}><X size={20} /></IconButton>
             </header>
             <div className="conversation" ref={body}>
@@ -548,7 +588,7 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
               )}
               {messages.map((m, i) => (
                 <div className={'msg ' + m.role} key={i}>
-                  <small>{m.role === 'user' ? 'You' : 'Invoicity'}</small>
+                  <small>{m.role === 'user' ? 'You' : m.role === 'summary' ? 'Context summary' : 'Invoicity'}</small>
                   {m.text && !m.base && m.state !== 'pending' && <p>{m.text}</p>}
                   {m.files?.length > 0 && (
                     <span className="attachedNames">{m.files.join(', ')}</span>
@@ -652,6 +692,22 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
           </aside>
         )}
       </div>
+      {modal === 'context' && <Modal title="Chat context" onClose={() => setModal('')}>
+        <p>{messages.length ? 'This workbook has its own conversation memory.' : 'This conversation is empty.'}</p>
+        <div className="memoryOptions">
+          <button disabled={!messages.length} onClick={() => setModal('compress')}>Compress context</button>
+          <button disabled={!messages.length} onClick={() => setModal('clear')}>Clear context</button>
+        </div>
+      </Modal>}
+      {['compress', 'clear'].includes(modal) && <Modal title={modal === 'clear' ? 'Clear this chat?' : 'Compress this chat?'}
+        onClose={() => { if (!busy) setModal('') }}>
+        <p>{modal === 'clear' ? 'Erase the messages, remembered attachments and summary for this workbook. Your spreadsheet edits stay in place.'
+          : 'Nemotron will replace this conversation with a local summary of its important facts and decisions. The full transcript will be removed.'}</p>
+        <div className="confirmActions">
+          <button autoFocus disabled={busy} onClick={() => setModal('')}>Cancel</button>
+          <button className="primary" disabled={busy} onClick={() => updateContext(modal)}>{busy ? 'Working…' : modal === 'clear' ? 'Clear chat' : 'Compress chat'}</button>
+        </div>
+      </Modal>}
       {modal === 'export' && (
         <Modal title="Export workbook" onClose={() => setModal('')}>
           <label className="field">

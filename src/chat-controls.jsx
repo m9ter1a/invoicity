@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import smile from './smile.svg'
 
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n))
@@ -65,6 +65,17 @@ function savedPosition() {
 export function ChatLauncher({ onOpen }) {
   const [pos, setPos] = useState(savedPosition)
   const track = useRef(null), drag = useRef(null), moved = useRef(false)
+  const [extent, setExtent] = useState({ x: 0, y: 0 })
+  const [dragging, setDragging] = useState(false)
+  useLayoutEffect(() => {
+    const area = track.current, button = area.firstElementChild
+    const measure = () => setExtent({ x: Math.max(1, area.clientWidth - button.offsetWidth),
+      y: Math.max(1, area.clientHeight - button.offsetHeight) })
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(area)
+    return () => observer.disconnect()
+  }, [])
   function update(p, persist) {
     setPos(p)
     if (persist) localStorage.setItem('chat-launcher', JSON.stringify(p))
@@ -75,18 +86,18 @@ export function ChatLauncher({ onOpen }) {
     const dx = e.clientX - start.x, dy = e.clientY - start.y
     if (Math.hypot(dx, dy) > 4) moved.current = true
     if (!moved.current) return
-    const area = track.current, button = e.currentTarget
+    setDragging(!persist)
     update({
-      x: clamp(start.pos.x + dx / Math.max(1, area.clientWidth - button.offsetWidth), 0, 1),
-      y: clamp(start.pos.y + dy / Math.max(1, area.clientHeight - button.offsetHeight), 0, 1),
+      x: clamp(start.pos.x + dx / extent.x, 0, 1),
+      y: clamp(start.pos.y + dy / extent.y, 0, 1),
     }, persist)
   }
   return (
     <div className="launcherTrack" ref={track}>
       <button autoFocus type="button" className="chatLauncher" aria-label="Open Invoicity chat"
         title="Open Invoicity chat · Drag to move"
-        style={{ left: pos.x * 100 + '%', top: pos.y * 100 + '%',
-          transform: 'translate(' + (-100 * pos.x) + '%, ' + (-100 * pos.y) + '%)' }}
+        data-dragging={dragging}
+        style={{ transform: `translate3d(${pos.x * extent.x}px, ${pos.y * extent.y}px, 0)` }}
         onPointerDown={e => {
           if (e.button !== 0) return
           drag.current = { x: e.clientX, y: e.clientY, pos }
@@ -95,7 +106,7 @@ export function ChatLauncher({ onOpen }) {
         }}
         onPointerMove={e => position(e, false)}
         onPointerUp={e => { position(e, true); drag.current = null }}
-        onLostPointerCapture={() => { drag.current = null }}
+        onLostPointerCapture={() => { drag.current = null; setDragging(false) }}
         onClick={e => { if (!moved.current || e.detail === 0) onOpen() }}
         onKeyDown={e => {
           const step = .05
