@@ -14,6 +14,9 @@ import {
 import { execFileSync } from 'node:child_process'
 import os from 'node:os'
 import path from 'node:path'
+const platform = process.argv[2] || process.platform
+if (!['darwin','linux','win32'].includes(platform)) throw Error('Unsupported platform: ' + platform)
+const arch = platform === 'darwin' ? 'arm64' : 'x64'
 const root = process.cwd(),
   stage = await mkdtemp(path.join(os.tmpdir(), 'invoicity-package-')),
   src = path.join(stage, 'app')
@@ -59,26 +62,30 @@ await writeFile(
   path.join(src, 'Third-party notices.txt'),
   licenses.join('\n\n'),
 )
-const iconset = path.join(stage, 'App.iconset'),
+let icon
+if (platform === 'darwin') {
+  const iconset = path.join(stage, 'App.iconset')
   icon = path.join(stage, 'App.icns')
-execFileSync('swift', [
-  '-module-cache-path',
-  path.join(stage, 'swift-cache'),
-  'scripts/icon.swift',
-  iconset,
-])
-execFileSync('iconutil', ['-c', 'icns', iconset, '-o', icon])
+  execFileSync('swift', ['-module-cache-path', path.join(stage, 'swift-cache'), 'scripts/icon.swift', iconset])
+  execFileSync('iconutil', ['-c', 'icns', iconset, '-o', icon])
+} else if (platform === 'win32') icon = path.resolve('scripts/invoicity.ico')
+else await copyFile('scripts/invoicity.png', path.join(src, 'icon.png'))
 const version = pkg.devDependencies.electron,
   cache = path.join(os.homedir(), 'Library/Caches/electron')
 let zipDir
 for (const n of await readdir(cache).catch(() => [])) {
   const dir = path.join(cache, n)
   try {
-    await access(path.join(dir, 'electron-v' + version + '-darwin-arm64.zip'))
+    await access(path.join(dir, 'electron-v' + version + '-' + platform + '-' + arch + '.zip'))
     zipDir = dir
     break
   } catch {}
 }
+const localZip = path.resolve('vendor/downloads')
+try {
+  await access(path.join(localZip,'electron-v'+version+'-'+platform+'-'+arch+'.zip'))
+  zipDir = localZip
+} catch {}
 const [result] = await packager({
   dir: src,
   out: path.join(root, 'release'),
@@ -90,8 +97,8 @@ const [result] = await packager({
   },
   electronLanguages: ['en', 'en-US', 'en_US'],
   appVersion: pkg.version,
-  platform: 'darwin',
-  arch: 'arm64',
+  win32metadata: { CompanyName: pkg.productName },
+  platform, arch,
   electronVersion: version,
   electronZipDir: zipDir,
   icon,
@@ -100,21 +107,17 @@ const [result] = await packager({
   overwrite: true,
   osxSign: false,
 })
-const app = path.join(result, 'Invoicity.app'),
-  vendor = path.join(app, 'Contents/Resources/vendor')
-await mkdir(path.join(vendor, 'models'), { recursive: true })
-await cp('vendor/llama', path.join(vendor, 'llama'), {
-  recursive: true,
-  verbatimSymlinks: true,
-  filter: (p) =>
-    p === 'vendor/llama' ||
-    p.endsWith('.dylib') ||
-    ['llama-server', 'LICENSE'].includes(path.basename(p)),
+const app = platform === 'darwin' ? path.join(result,'Invoicity.app') : result
+const vendor = path.join(app, platform === 'darwin' ? 'Contents/Resources/vendor' : 'resources/vendor')
+const nativeDir = platform === 'darwin' ? 'vendor/llama' : 'vendor/llama-'+platform
+await mkdir(path.join(vendor, 'models'), {recursive:true})
+await cp(nativeDir, path.join(vendor,'llama'), {
+  recursive:true, verbatimSymlinks:true,
+  filter: file => file === nativeDir || /(?:\.dll|\.dylib|\.so(?:\.[0-9.]+)?)$/i.test(file) ||
+    /^(llama-server(\.exe)?|LICENSE.*)$/.test(path.basename(file)),
 })
-await copyFile('vendor/extract', path.join(vendor, 'extract'))
-for (const f of ['nemotron.gguf', 'NVIDIA-License.pdf', 'SmolVLM-500M-Instruct-Q8_0.gguf', 'mmproj-SmolVLM-500M-Instruct-Q8_0.gguf', 'SmolVLM-LICENSE.txt'])
-  await copyFile('vendor/models/' + f, path.join(vendor, 'models', f))
-execFileSync('codesign', ['--force', '--deep', '--sign', '-', app], {
-  stdio: 'inherit',
-})
+if (platform === 'darwin') await copyFile('vendor/extract', path.join(vendor,'extract'))
+for (const file of ['nemotron.gguf','NVIDIA-License.pdf','SmolVLM-500M-Instruct-Q8_0.gguf','mmproj-SmolVLM-500M-Instruct-Q8_0.gguf','SmolVLM-LICENSE.txt'])
+  await copyFile(path.join('vendor/models',file), path.join(vendor,'models',file))
+if (platform === 'darwin') execFileSync('codesign',['--force','--deep','--sign','-',app],{stdio:'inherit'})
 console.log(app)
