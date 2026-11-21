@@ -13,6 +13,18 @@ jobs:
       tag: ${{ steps.release.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Cache pinned model weights across runner platforms
+        id: weights
+        uses: actions/cache@v4
+        with:
+          path: vendor/models
+          key: invoicity-gguf-ba223d14-72e98600-v1
+          enableCrossOsArchive: true
+      - if: steps.weights.outputs.cache-hit != 'true'
+        run: node scripts/prepare-target.mjs linux
       - id: release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -48,6 +60,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - uses: actions/cache/restore@v4
+        with:
+          path: vendor/models
+          key: invoicity-gguf-ba223d14-72e98600-v1
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
       - run: npm ci
       - run: npm test
       - run: node scripts/prepare-target.mjs ${{ matrix.target }}
