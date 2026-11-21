@@ -1,11 +1,8 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
-  Layers3,
   Star,
-  LockKeyhole,
   Plus,
-  ArrowUpRight,
   Upload,
   Search,
   FileSpreadsheet,
@@ -20,7 +17,6 @@ import {
   ShieldCheck,
   PanelRightClose,
   PanelRightOpen,
-  CornerDownRight,
   FileText,
   LoaderCircle,
   ArrowDownToLine,
@@ -57,32 +53,7 @@ const icons = {
   import: FileSpreadsheet,
 }
 function Mark() {
-  return (
-    <span className="mark" aria-hidden="true">
-      <i />
-      <i />
-      <i />
-    </span>
-  )
-}
-function Paper() {
-  return (
-    <div className="paperScene" aria-hidden="true">
-      <div className="graphLines" />
-      <div className="paper back" />
-      <div className="paper middle" />
-      <div className="paper front">
-        <div className="paperTop">
-          <Mark />
-          <span>INVOICE</span>
-        </div>
-        <div className="paperLead" />
-        <div className="paperSmall" />
-        <div className="paperGrid" />
-        <div className="paperSum" />
-      </div>
-    </div>
-  )
+  return <span className="mark" aria-hidden="true">=)</span>
 }
 function IconButton({ title, children, ...props }) {
   return (
@@ -199,9 +170,6 @@ function App() {
                 <Mark />
                 invoicity
               </div>
-              <span className="privacy">
-                <LockKeyhole size={13} /> On this Mac
-              </span>
             </div>
             <div className="homeInner">
               <header className="homeTitle">
@@ -211,41 +179,18 @@ function App() {
                 <button
                   disabled={loading}
                   className="newCard"
-                  onClick={() => open(() => api.create('blank'))}
+                  onClick={() => open(() => api.create())}
                 >
-                  <div className="newContent">
-                    <span className="largeIcon">
-                      <Plus />
-                    </span>
-                    <strong>New spreadsheet</strong>
-                    <span>Start with a blank workbook</span>
-                  </div>
-                  <Paper />
+                  <Plus size={35} strokeWidth={1.5} aria-hidden="true" />
+                  <strong>New spreadsheet</strong>
                 </button>
                 <button
                   disabled={loading}
                   className="importCard"
                   onClick={() => open(() => api.importFile())}
                 >
-                  <span className="largeIcon">
-                    <Upload />
-                  </span>
+                  <Upload size={27} strokeWidth={1.5} aria-hidden="true" />
                   <strong>Import a file</strong>
-                  <span>Excel, OpenDocument, CSV or TSV</span>
-                  <ArrowUpRight className="cardArrow" size={17} />
-                </button>
-              </div>
-              <div className="templates">
-                <span>Templates</span>
-                <button onClick={() => open(() => api.create('invoice'))}>
-                  <FileText />
-                  Invoice
-                  <ArrowUpRight />
-                </button>
-                <button onClick={() => open(() => api.create('register'))}>
-                  <Rows3 />
-                  Invoice register
-                  <ArrowUpRight />
                 </button>
               </div>
               <section className="library">
@@ -382,7 +327,6 @@ function Editor({ initial, home, flush, notify, model }) {
     [text, setText] = useState(''),
     [files, setFiles] = useState([]),
     [busy, setBusy] = useState(false),
-    [saving, setSaving] = useState('Saved'),
     [chatOpen, setChatOpen] = useState(true),
     [modal, setModal] = useState(''),
     [format, setFormat] = useState('xlsx'),
@@ -403,17 +347,10 @@ function Editor({ initial, home, flush, notify, model }) {
     const data = { ...record.current, snapshot: snap }
     const job = saveChain.current.catch(() => {}).then(() => api.save(data))
     saveChain.current = job
-    try {
-      await job
-      if (live.current && saveChain.current === job) setSaving('Saved')
-    } catch (e) {
-      if (live.current) setSaving('Could not save')
-      throw e
-    }
+    await job
   }
   function dirty() {
     if (!live.current) return
-    setSaving('Saving…')
     clearTimeout(timer.current)
     timer.current = setTimeout(() => save().catch(notify), 450)
   }
@@ -465,20 +402,21 @@ function Editor({ initial, home, flush, notify, model }) {
         attachments: files,
         history: old,
       })
-      if (live.current)
-        setHistory([
-          ...old,
-          user,
-          {
-            role: 'assistant',
-            text: reply.actions.length
-              ? 'Review the proposed changes below.'
-              : reply.message,
-            actions: reply.actions,
-            state: reply.actions.length ? 'pending' : undefined,
-            base: reply.actions.length ? await fingerprint(base) : undefined,
-          },
-        ])
+      if (!live.current) return
+      if (reply.actions.length) {
+        await grid.current.finish()
+        if (!live.current) return
+        if (JSON.stringify(grid.current.snapshot().sheets) !== base)
+          throw Error('The sheet changed during this request. Send the request again to use the current data.')
+        applyPlan(grid.current, reply.actions)
+      }
+      setHistory([...old, user, {
+        role: 'assistant',
+        text: reply.message,
+        actions: reply.actions,
+        state: reply.actions.length ? 'applied' : undefined,
+      }])
+      await save().catch(notify)
     } catch (e) {
       if (live.current) {
         setHistory([...old, user, { role: 'assistant', text: cleanError(e) }])
@@ -487,28 +425,6 @@ function Editor({ initial, home, flush, notify, model }) {
       }
     } finally {
       if (live.current) setBusy(false)
-    }
-  }
-  async function apply(i) {
-    try {
-      const m = record.current.messages[i]
-      await grid.current.finish()
-      if (
-        (await fingerprint(JSON.stringify(grid.current.snapshot().sheets))) !==
-        m.base
-      )
-        throw Error(
-          'The workbook has changed. Ask the assistant for an updated proposal.',
-        )
-      applyPlan(grid.current, m.actions)
-      setHistory(
-        record.current.messages.map((x, j) =>
-          j === i ? { ...x, state: 'applied' } : x,
-        ),
-      )
-      await save()
-    } catch (e) {
-      notify(e)
     }
   }
   async function checkBook() {
@@ -541,10 +457,6 @@ function Editor({ initial, home, flush, notify, model }) {
             if (e.key === 'Enter') e.target.blur()
           }}
         />
-        <span className="saveBadge">
-          <Check size={13} />
-          {saving}
-        </span>
         <div className="spacer" />
         <button disabled={!ready} className="barAction" onClick={checkBook}>
           <ShieldCheck size={16} />
@@ -559,7 +471,7 @@ function Editor({ initial, home, flush, notify, model }) {
           Export
         </button>
         <IconButton
-          title={chatOpen ? 'Hide assistant' : 'Open assistant'}
+          title={chatOpen ? 'Hide Invoicity chat' : 'Open Invoicity chat'}
           onClick={() => setChatOpen(!chatOpen)}
         >
           {chatOpen ? <PanelRightClose /> : <PanelRightOpen />}
@@ -575,46 +487,37 @@ function Editor({ initial, home, flush, notify, model }) {
           )}
         </div>
         {chatOpen && (
-          <aside className="copilot">
+          <aside className="copilot" aria-label="Invoicity chat">
             <header>
-              <span className="agentIcon">
-                <Layers3 size={17} />
-              </span>
-              <div>
-                <b>Assistant</b>
-                <small>Nemotron 3 Nano</small>
-              </div>
-              <span className="localDot" title="On this device" />
+              <Mark />
+              <h2>Invoicity</h2>
             </header>
             <div className="conversation" ref={body}>
               {!messages.length && (
                 <div className="hello">
-                  <span className="agentGlyph">
-                    <Layers3 size={27} />
-                  </span>
-                  <h2>
-                    How can I help
-                    <br />
-                    with this sheet?
-                  </h2>
-                  <p>Ask about your data or request a change to the sheet.</p>
-                  {['Review this invoice', 'Explain the total'].map((p) => (
-                    <button disabled={!ready} key={p} onClick={() => ask(p)}>
-                      <CornerDownRight size={14} />
-                      {p}
-                    </button>
-                  ))}
+                  <h3>What would you<br />like to work on?</h3>
+                  <div className="suggestions">
+                    {['Review this invoice', 'Explain the total'].map((p) => (
+                      <button disabled={!ready || !model.installed} key={p} onClick={() => ask(p)}>
+                        {p}<ArrowUp size={14} aria-hidden="true" />
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
               {messages.map((m, i) => (
                 <div className={'msg ' + m.role} key={i}>
-                  <small>{m.role === 'user' ? 'You' : 'Nemotron'}</small>
-                  <p>{m.text}</p>
+                  <small>{m.role === 'user' ? 'You' : 'Invoicity'}</small>
+                  {m.text && !m.base && m.state !== 'pending' && <p>{m.text}</p>}
                   {m.files?.length > 0 && (
                     <span className="attachedNames">{m.files.join(', ')}</span>
                   )}
                   {m.actions?.length > 0 && (
-                    <div className="proposal">
+                    <details className="actionDetails">
+                      <summary>
+                        {m.state === 'applied' && <Check size={14} aria-hidden="true" />}
+                        {m.state === 'applied' ? 'Applied' : 'Not applied'} · {m.actions.length} {m.actions.length === 1 ? 'change' : 'changes'}
+                      </summary>
                       {m.actions.map((a, j) => (
                         <div key={j}>
                           <b>{operationNames[a.op] || a.op}</b>
@@ -633,17 +536,7 @@ function Editor({ initial, home, flush, notify, model }) {
                           {a.values && <pre>{JSON.stringify(a.values)}</pre>}
                         </div>
                       ))}
-                      {m.state === 'pending' ? (
-                        <button disabled={busy} onClick={() => apply(i)}>
-                          Apply changes
-                        </button>
-                      ) : (
-                        <span>
-                          <Check size={13} />
-                          Applied
-                        </span>
-                      )}
-                    </div>
+                    </details>
                   )}
                 </div>
               ))}
@@ -670,8 +563,8 @@ function Editor({ initial, home, flush, notify, model }) {
               ))}
               <div className="composer">
                 <textarea
-                  aria-label="Message the assistant"
-                  placeholder="Ask about this sheet…"
+                  aria-label="Message Invoicity"
+                  placeholder="Message Invoicity…"
                   maxLength={2500}
                   value={text}
                   onChange={(e) => setText(e.target.value)}
@@ -713,10 +606,6 @@ function Editor({ initial, home, flush, notify, model }) {
                   </button>
                 </div>
               </div>
-              <small>
-                <LockKeyhole size={11} />
-                Processed on this Mac
-              </small>
             </div>
           </aside>
         )}
@@ -798,14 +687,5 @@ function Editor({ initial, home, flush, notify, model }) {
       )}
     </div>
   )
-}
-async function fingerprint(s) {
-  const bytes = await crypto.subtle.digest(
-    'SHA-256',
-    new TextEncoder().encode(s),
-  )
-  return Array.from(new Uint8Array(bytes), (v) =>
-    v.toString(16).padStart(2, '0'),
-  ).join('')
 }
 createRoot(document.getElementById('root')).render(<App />)

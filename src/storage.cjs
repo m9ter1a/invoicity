@@ -69,11 +69,6 @@ function storage(dir) {
     fs.renameSync(temp, dst)
     return book.updated
   }
-  if (!fs.existsSync(path.join(dir, '.initialized'))) {
-    if (!fs.readdirSync(dir).some((x) => x.endsWith('.json')))
-      save(createBook('invoice', 'Sample invoice', true))
-    fs.writeFileSync(path.join(dir, '.initialized'), '1')
-  }
   return {
     read,
     save,
