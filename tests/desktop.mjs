@@ -190,12 +190,28 @@ try {
     return snapshot.sheets[snapshot.sheetOrder[0]].cellData[3][9].v
   })
   assert.equal(stored, 'yooo')
+  await text.fill('in J4 type "yooo"')
+  await text.press('Enter')
+  await page.getByText('The proposed edit would leave the sheet unchanged.').waitFor({timeout:190000})
+  assert.equal(await receipt.count(), 2)
   async function contextAction(option, confirm) {
     await button('Chat context').click()
     await button(option).click()
+    await assertDialogAlignment()
     await button(confirm).click()
     await page.locator('dialog').waitFor({state: 'hidden', timeout: 190000})
   }
+  async function assertDialogAlignment() {
+    const actions = page.locator('dialog .confirmActions button')
+    const [cancel, primary] = await Promise.all([actions.nth(0).boundingBox(), actions.nth(1).boundingBox()])
+    assert.equal(cancel.y, primary.y)
+    assert.equal(cancel.height, primary.height)
+  }
+  const attach = await button('Attach document').boundingBox()
+  const memory = await button('Chat context').boundingBox()
+  assert.equal(attach.y, memory.y)
+  assert.ok(memory.x >= attach.x + attach.width && memory.x - attach.x - attach.width <= 6)
+  assert.equal(await button('Close chat').evaluate(el => getComputedStyle(el).backgroundColor), 'rgba(0, 0, 0, 0)')
   await contextAction('Clear context', 'Cancel')
   await receipt.nth(1).waitFor()
   await contextAction('Compress context', 'Compress chat')
@@ -234,9 +250,46 @@ try {
   await answer.waitFor({timeout: 190000})
   console.log('Visual recognition:', await answer.innerText())
   assert.match(await answer.innerText(), /face|smil|emoji/i)
+  assert.equal(await receipt.count(), 0)
   await page.screenshot({path:path.join(temp, 'drawing.png')})
+  await text.fill('Paint a large smiling face in D6.')
+  await text.press('Enter')
+  await receipt.first().waitFor({timeout:190000})
+  await text.fill('нарисуй дракона')
+  await text.press('Enter')
+  await receipt.nth(1).waitFor({timeout:190000})
+  await button('Back to documents').click()
+  const dragon = await page.evaluate(async () => {
+    const book = (await window.localDesk.list()).find(b => b.name === 'Drawing test')
+    const {messages,snapshot} = await window.localDesk.read(book.id)
+    const action = messages.at(-1).actions[0], sheet = snapshot.sheets[snapshot.sheetOrder[0]]
+    const address = /^([A-Z]+)(\d+)$/.exec(action.range)
+    const r = Number(address[2]) - 1
+    const c = [...address[1]].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0) - 1
+    const colors = new Set()
+    for (let y = r; y < r + 18; y++) for (let x = c; x < c + 18; x++) {
+      const style = sheet.cellData[y]?.[x]?.s
+      const color = (typeof style === 'string' ? snapshot.styles[style] : style)?.bg?.rgb
+      if (color) colors.add(color)
+    }
+    return {action, colorCount:colors.size, previous:messages.at(-3).actions[0]}
+  })
+  assert.equal(dragon.previous.op,'smiley')
+  assert.equal(dragon.previous.range,'D6')
+  assert.equal(dragon.action.op,'paintIcon')
+  assert.match(dragon.action.symbol, /[🐉🐲]/u)
+  assert.notEqual(dragon.action.range,'D6')
+  assert.ok(dragon.colorCount > 10)
+  console.log('Follow-up drawing:', dragon)
+  await button('Drawing test').click()
+  await text.fill('я говорю дракона нарисуй')
+  await text.press('Enter')
+  await receipt.nth(2).waitFor({timeout:190000})
+  assert.match(await page.locator('.msg.assistant').last().innerText(),/dragon|🐉|🐲/iu)
+  await page.screenshot({path:path.join(temp, 'dragon.png')})
   await button('Back to documents').click()
   await button('Delete Drawing test').click()
+  await assertDialogAlignment()
   await button('Cancel').click()
   await button('Drawing test').waitFor()
   await button('Delete Drawing test').click()
