@@ -307,8 +307,8 @@ h1 {
   flex: none;
 }
 .iconBtn {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   display: inline-grid;
   place-items: center;
   border: 0;
@@ -373,7 +373,7 @@ h1 {
 }
 .barAction {
   background: var(--raised);
-  border: 1px solid #3e3e3e;
+  border: 1px solid var(--line);
   border-radius: 6px;
   padding: 6px 9px;
   font-size: 12px;
@@ -424,8 +424,7 @@ h1 {
 }
 .copilot header .iconBtn {
   flex-shrink: 0;
-  width: 33px;
-  height: 33px;
+
   color: var(--ink);
   background: transparent;
 }
@@ -554,15 +553,14 @@ h1 {
 .composer textarea::placeholder { color: var(--muted); }
 .composer > div { display: flex; align-items: center; gap: 3px; }
 .composer .send { margin-left: auto; }
-.send, .primary {
+.send {
   background: var(--primary);
   color: var(--on-primary);
   border: 0;
   font-weight: 600;
 }
 .send { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; }
-.primary { padding: 9px 13px; border-radius: 6px; }
-dialog > .primary { margin-top: 8px; }
+
 .msg { min-width: 0; overflow-wrap: anywhere; }
 .msg small { display: block; color: var(--muted); font-size: 11px; margin: 0 0 6px; }
 .msg p { white-space: pre-wrap; line-height: 1.65; font-size: 13px; }
@@ -641,11 +639,6 @@ dialog h2 {
   font-size: 20px;
   letter-spacing: -0.8px;
   font-weight: 500;
-}
-.primary {
-  display: flex;
-  align-items: center;
-  gap: 10px;
 }
 .field {
   color: var(--secondary);
@@ -768,39 +761,7 @@ dialog h2 {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: none; }
 }
-.tourPrimary, .tourSecondary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  border: 1px solid transparent;
-  border-radius: 9px;
-  min-height: 45px;
-  padding: 10px 20px;
-  font-weight: 500;
-}
-.tourPrimary { background: var(--primary); color: var(--on-primary); }
-.tourSecondary { background: var(--panel); border-color: var(--line); }
-.tourActions, .themeChoices { display: flex; gap: 10px; }
-.themeChoices { margin-bottom: 26px; }
-.themeChoice {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  width: 134px;
-  padding: 18px;
-  gap: 20px 4px;
-  text-align: left;
-  border: 1px solid #aaa;
-  border-radius: 10px;
-}
-.themeChoice > svg:first-child { grid-column: 1/-1; }
-.themeChoice.light { background: #fff; color: #202020; }
-.themeChoice.dark { background: #191919; color: #f4f4f4; }
-.themeChoice[aria-pressed="true"] { outline: 2px solid var(--ink); outline-offset: 3px; }
-.themeChoice:focus-visible { outline-style: dashed; }
-
-.workspaceTools, .tipTop, .tipActions, .confirmActions, .memoryOptions { display: flex; align-items: center; gap: 8px; }
+.workspaceTools, .tipTop, .tipActions { display: flex; align-items: center; gap: 8px; }
 .workspaceTools { -webkit-app-region: no-drag; }
 .tourSpot {
   position: fixed; z-index: 30; pointer-events: none; border-radius: 12px;
@@ -813,18 +774,41 @@ dialog h2 {
 .tipTop { justify-content: space-between; color: var(--muted); }
 .tourTip h2 { margin: 14px 0 6px; font-size: 20px; letter-spacing: -.035em; }
 .tourTip p, dialog p { font-size: 14px; line-height: 1.5; color: var(--secondary); margin: 0; }
-.tipActions, .confirmActions { justify-content: flex-end; margin-top: 18px; }
-.memoryOptions { justify-content: center; flex-wrap: wrap; margin-top: 18px; }
-dialog .exportHint { margin: 12px 0 0; }
-dialog .exportHint + .primary { margin-top: 24px; }
-.tipTop button, .tipActions button, .memoryOptions button, .confirmActions button {
-  display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px;
-  color: var(--ink); border: 1px solid var(--line); border-radius: 7px; background: var(--panel);
+.dialogActions {
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
-.tipActions button { width: 108px; min-height: 38px; justify-content: center; line-height: 20px; white-space: nowrap; }
-.tipTop button { border: 0; color: var(--muted); padding: 4px; }
-.confirmActions button { min-height: 38px; justify-content: center; line-height: 20px; }
-.tipActions .tourPrimary, .confirmActions .primary { background: var(--primary); color: var(--on-primary); }
+.dialogActions.singleAction { grid-template-columns: minmax(0, 1fr); justify-items: center; }
+.singleAction .actionButton { min-width: calc(50% - 4px); }
+.tipActions { justify-content: flex-end; margin-top: 18px; }
+.tipActions .actionButton { width: 108px; }
+dialog .exportHint { margin: 12px 0 0; }
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background-color: var(--panel);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+}
+.actionButton:hover:enabled { background-color: var(--raised); }
+.actionButton.primary {
+  border-color: transparent;
+  color: var(--on-primary);
+  background-color: var(--primary);
+}
+.actionButton.primary:hover:enabled { background-color: color-mix(in srgb, var(--primary) 90%, var(--panel)); }
+.tipTop button { border: 0; background: transparent; color: var(--muted); padding: 4px; border-radius: 6px; }
+.tipTop button:hover { background: var(--raised); }
 .chatLauncher { left: 0; top: 0; }
 .chatLauncher .mark { transition: transform 220ms cubic-bezier(.2,.8,.2,1.3); }
 .chatLauncher[data-dragging=true] { will-change: transform; cursor: grabbing; }

@@ -20,7 +20,9 @@ Allowed shapes (one object per change, use field op):
 {"op":"addSheet","name":"new name"} or {"op":"renameSheet","sheet":"old","name":"new"}.
 When the snapshot is partial do not claim to have reviewed the entire book. A new sheet can be referenced by later operations. Maximum 50 operations. Do not output markdown fences.`
 function localServer(vendor, filename, alias, options) {
-  const exe = path.join(vendor, 'llama', 'llama-server'),
+  const devRuntime = path.join(vendor, 'llama-' + process.platform)
+  const runtime = fs.existsSync(devRuntime) ? devRuntime : path.join(vendor, 'llama')
+  const exe = path.join(runtime, process.platform === 'win32' ? 'llama-server.exe' : 'llama-server'),
     model = path.join(vendor, 'models', filename)
   let child = null,
     ready = null,
@@ -70,7 +72,7 @@ function localServer(vendor, filename, alias, options) {
         '--no-warmup',
         ...options,
       ],
-      { env: { ...process.env, LLAMA_API_KEY: token }, stdio: 'ignore' },
+      { cwd: path.dirname(exe), windowsHide: true, env: { ...process.env, LLAMA_API_KEY: token }, stdio: 'ignore' },
     )
     child = proc
     let failure = null

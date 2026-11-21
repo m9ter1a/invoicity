@@ -1,3 +1,4 @@
+import { ActionButton } from './action-button'
 import React, { useLayoutEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, Moon, Sun } from 'lucide-react'
 import { Mark } from './chat-controls'
@@ -23,7 +24,7 @@ export function Onboarding({ onStart }) {
 const steps = [
   ['.newCard', 'Create a spreadsheet', 'Start a blank workbook here. You can open it now or continue the tour.'],
   ['.importCard', 'Import a file', 'Bring an existing Excel, OpenDocument or CSV file into this workspace.'],
-  ['.search', 'Find a document', 'Search your saved documents by name. You can also press ⌘K.'],
+  ['.search', 'Find a document', 'Search your saved documents by name.'],
   ['.documentFilters', 'Keep track of important files', 'Bookmark a document, then choose Bookmarked to find it here.'],
 ]
 export function WorkspaceTour({ onFinish }) {
@@ -64,10 +65,10 @@ export function WorkspaceTour({ onFinish }) {
     <aside className="tourTip" ref={tip} aria-label="Workspace tour" style={position ? {top:position.top,left:position.left,width:position.w} : {visibility:'hidden'}}>
       <div className="tipTop"><small>Workspace tour · {step + 1} of {steps.length}</small><button onClick={onFinish}>Skip tour</button></div>
       <h2>{title}</h2><p id="tour-description">{description}</p>
-      <div className="tipActions">{step > 0 && <button onClick={() => setStep(step - 1)}><ArrowLeft size={14}/> Back</button>}
-        <button className="tourPrimary" autoFocus onClick={() => step + 1 === steps.length ? onFinish() : setStep(step + 1)}>
+      <div className="tipActions">{step > 0 && <ActionButton onClick={() => setStep(step - 1)}><ArrowLeft size={14}/> Back</ActionButton>}
+        <ActionButton primary autoFocus onClick={() => step + 1 === steps.length ? onFinish() : setStep(step + 1)}>
           {step + 1 === steps.length ? 'Finish tour' : 'Next'} <ArrowRight size={14}/>
-        </button>
+        </ActionButton>
       </div>
     </aside>
   </>

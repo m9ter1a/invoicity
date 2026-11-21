@@ -1,3 +1,4 @@
+import { ActionButton } from './action-button'
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
@@ -238,7 +239,7 @@ function App() {
                       placeholder="Search documents by name"
                       aria-label="Search documents by name"
                     />
-                    <kbd>⌘ K</kbd>
+                    <kbd>{api.platform === 'darwin' ? '⌘ K' : 'Ctrl K'}</kbd>
                   </label>
                 </div>
                 <div className="documentFilters" role="group" aria-label="Filter documents">
@@ -318,14 +319,14 @@ function App() {
       )}
       {tour === 'guide' && !book && <WorkspaceTour onFinish={finishTour} />}
       {deleting && <Modal title="Delete spreadsheet?" onClose={() => { if (!loading) setDeleting(null) }}>
-        <p>Move <strong>{deleting.name}</strong> and its chat history to the Mac Trash?</p>
-        <div className="confirmActions">
-          <button autoFocus disabled={loading} onClick={() => setDeleting(null)}>Cancel</button>
-          <button className="primary" disabled={loading} onClick={async () => {
+        <p>Move <strong>{deleting.name}</strong> and its chat history to the {api.platform === 'win32' ? 'Recycle Bin' : 'Trash'}?</p>
+        <div className="dialogActions confirmActions">
+          <ActionButton autoFocus disabled={loading} onClick={() => setDeleting(null)}>Cancel</ActionButton>
+          <ActionButton primary disabled={loading} onClick={async () => {
             setLoading(true)
             try { await api.trashBook(deleting.id); setDeleting(null); await refresh() }
             catch (e) { notify(e) } finally { setLoading(false) }
-          }}>Move to Trash</button>
+          }}>Move to {api.platform === 'win32' ? 'Recycle Bin' : 'Trash'}</ActionButton>
         </div>
       </Modal>}
       {error && (
@@ -545,7 +546,7 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
   return (
     <div className="studio">
       <div className="editorTop">
-        <span className="editorTraffic" />
+        {api.platform === 'darwin' && <span className="editorTraffic" />}
         <IconButton title="Back to documents" disabled={busy} onClick={home}>
           <ArrowLeft size={18} />
         </IconButton>
@@ -719,18 +720,18 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
       </div>
       {modal === 'context' && <Modal title="Chat context" onClose={() => setModal('')}>
         <p>{messages.length ? 'This workbook has its own conversation memory.' : 'This conversation is empty.'}</p>
-        <div className="memoryOptions">
-          <button disabled={!messages.length} onClick={() => setModal('compress')}>Compress context</button>
-          <button disabled={!messages.length} onClick={() => setModal('clear')}>Clear context</button>
+        <div className="dialogActions memoryOptions">
+          <ActionButton disabled={!messages.length} onClick={() => setModal('compress')}>Compress context</ActionButton>
+          <ActionButton disabled={!messages.length} onClick={() => setModal('clear')}>Clear context</ActionButton>
         </div>
       </Modal>}
       {['compress', 'clear'].includes(modal) && <Modal title={modal === 'clear' ? 'Clear this chat?' : 'Compress this chat?'}
         onClose={() => { if (!busy) setModal('') }}>
         <p>{modal === 'clear' ? 'Erase the messages, remembered attachments and summary for this workbook. Your spreadsheet edits stay in place.'
           : 'Nemotron will replace this conversation with a local summary of its important facts and decisions. The full transcript will be removed.'}</p>
-        <div className="confirmActions">
-          <button autoFocus disabled={busy} onClick={() => setModal('')}>Cancel</button>
-          <button className="primary" disabled={busy} onClick={() => updateContext(modal)}>{busy ? 'Working…' : modal === 'clear' ? 'Clear chat' : 'Compress chat'}</button>
+        <div className="dialogActions confirmActions">
+          <ActionButton autoFocus disabled={busy} onClick={() => setModal('')}>Cancel</ActionButton>
+          <ActionButton primary disabled={busy} onClick={() => updateContext(modal)}>{busy ? 'Working…' : modal === 'clear' ? 'Clear chat' : 'Compress chat'}</ActionButton>
         </div>
       </Modal>}
       {modal === 'export' && (
@@ -760,29 +761,31 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
                 ? 'All sheets with calculated values.'
                 : 'All sheets, including formulas.'}
           </p>
-          <button
-            className="primary"
-            onClick={async () => {
-              try {
-                await grid.current.finish()
-                if (
-                  await api.exportFile(
-                    grid.current.snapshot(),
-                    format,
-                    grid.current.book.getActiveSheet().getSheetId(),
-                  )
-                ) {
-                  setModal('')
-                  notify('File saved.')
+          <div className="dialogActions singleAction">
+            <ActionButton
+              primary
+              onClick={async () => {
+                try {
+                  await grid.current.finish()
+                  if (
+                    await api.exportFile(
+                      grid.current.snapshot(),
+                      format,
+                      grid.current.book.getActiveSheet().getSheetId(),
+                    )
+                  ) {
+                    setModal('')
+                    notify('File saved.')
+                  }
+                } catch (e) {
+                  notify(e)
                 }
-              } catch (e) {
-                notify(e)
-              }
-            }}
-          >
-            <ArrowDownToLine size={16} />
-            Save file
-          </button>
+              }}
+            >
+              <ArrowDownToLine size={16} />
+              Save file
+            </ActionButton>
+          </div>
         </Modal>
       )}
     </div>
