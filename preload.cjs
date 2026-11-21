@@ -1,5 +1,5 @@
 const { contextBridge, ipcRenderer } = require('electron')
-const api = {}
+const api = { platform: process.platform }
 for (const name of [
   'list',
   'setAppearance',

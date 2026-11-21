@@ -2,7 +2,7 @@
   "name": "invoicity",
   "productName": "Invoicity",
   "private": true,
-  "version": "0.1.8",
+  "version": "0.1.9",
   "main": "main.cjs",
   "scripts": {
     "build": "node scripts/build.mjs",
@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@fontsource/inter": "5.3.0",
+    "@tesseract.js-data/eng": "1.0.0",
+    "@tesseract.js-data/rus": "1.0.0",
     "@univerjs/preset-sheets-core": "1.6.0",
     "@univerjs/preset-sheets-filter": "1.6.0",
     "@univerjs/preset-sheets-sort": "1.6.0",
@@ -19,9 +21,12 @@
     "docx": "9.16.0",
     "exceljs": "4.4.0",
     "lucide-react": "1.77.0",
+    "mammoth": "1.13.0",
     "papaparse": "5.7.1",
+    "pdfjs-dist": "6.5.438",
     "react": "19.3.1",
     "react-dom": "19.3.1",
+    "tesseract.js": "7.0.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {

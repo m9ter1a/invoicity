@@ -52,8 +52,8 @@ else {
       minHeight: 620,
       backgroundColor: '#fafafa',
       title: 'Invoicity',
-      titleBarStyle: 'hiddenInset',
-      trafficLightPosition: { x: 18, y: 17 },
+      ...(process.platform === 'linux' ? {icon: path.join(__dirname, app.isPackaged ? 'icon.png' : 'scripts/invoicity.png')} : {}),
+      ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 18, y: 17 } } : { autoHideMenuBar: true }),
       webPreferences: {
         preload: path.join(__dirname, 'preload.cjs'),
         contextIsolation: true,
@@ -185,21 +185,24 @@ handle('attachment', async () => {
             .join('\n'),
       )
       .join('\n')
-  } else if (ext === 'docx')
-    text = (
-      await execFile(
-        '/usr/bin/textutil',
-        ['-convert', 'txt', '-stdout', file],
-        { maxBuffer: 16e6 },
-      )
-    ).stdout
-  else if (['pdf', 'png', 'jpg', 'jpeg'].includes(ext))
-    text = (
-      await execFile(path.join(vendor, 'extract'), [file], {
-        maxBuffer: 16e6,
-        timeout: 120000,
-      })
-    ).stdout
+  } else if (ext === 'docx') {
+    text = (await require('mammoth').extractRawText({path: file})).value
+  } else if (['pdf', 'png', 'jpg', 'jpeg'].includes(ext)) {
+    if (process.platform === 'darwin') {
+      text = (await execFile(path.join(vendor, 'extract'), [file], {maxBuffer: 16e6, timeout: 120000})).stdout
+    } else {
+      const reader = new BrowserWindow({show: false, webPreferences: {sandbox: true, nodeIntegration: false, contextIsolation: true}})
+      const timer = setTimeout(() => reader.destroy(), 120000)
+      try {
+        await reader.loadFile(path.join(__dirname, 'dist', 'extract.html'))
+        const encoded = (await fs.readFile(file)).toString('base64')
+        text = await reader.webContents.executeJavaScript('window.extractAttachment(' + JSON.stringify(encoded) + ',' + JSON.stringify(ext) + ')')
+      } finally {
+        clearTimeout(timer)
+        if (!reader.isDestroyed()) reader.destroy()
+      }
+    }
+  }
   else text = await fs.readFile(file, 'utf8')
   if (!text.trim()) throw Error('No readable text was found in the file.')
   return {
