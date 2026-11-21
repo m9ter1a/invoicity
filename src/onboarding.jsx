@@ -9,13 +9,13 @@ export function ThemeSwitch({ theme, onChange }) {
     onClick={() => onChange(dark ? 'light' : 'dark')}>{dark ? <Sun size={18} /> : <Moon size={18} />}</button>
 }
 
-export function Onboarding({ onStart, onFinish }) {
+export function Onboarding({ onStart }) {
   return <main className="tour" aria-label="Welcome tour">
-    <header className="tourTop"><button onClick={onFinish} className="tourSkip">Skip tour</button></header>
-    <section className="tourContent step0">
-      <div className="tourMark"><Mark /></div><h1>Welcome to Invoicity.</h1>
-      <p>Create invoices and work with your AI agent. Your files and conversations stay on this Mac.</p>
-      <button autoFocus className="tourPrimary" onClick={onStart}>Get started <ArrowRight size={17} /></button>
+    <section className="tourContent">
+      <div className="tourMark"><Mark /></div>
+      <h1>Welcome to Invoicity</h1>
+      <p>Your first private AI invoice assistant</p>
+      <button className="welcomeStart" onClick={onStart}>Get started <ArrowRight size={20} aria-hidden="true" /></button>
     </section>
   </main>
 }

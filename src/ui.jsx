@@ -177,7 +177,7 @@ function App() {
   return (
     <>
       {tour === 'welcome' ? (
-        <Onboarding onStart={() => leaveWelcome('guide')} onFinish={finishTour} />
+        <Onboarding onStart={() => leaveWelcome('guide')} />
       ) : book ? (
         <Editor
           key={book.id}
@@ -737,7 +737,7 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
         <Modal title="Export workbook" onClose={() => setModal('')}>
           <label className="field">
             File format
-            <select value={format} onChange={(e) => setFormat(e.target.value)}>
+            <select aria-describedby="export-hint" value={format} onChange={(e) => setFormat(e.target.value)}>
               {[
                 ['xlsx', 'Excel (.xlsx)'],
                 ['xls', 'Excel 97–2003 (.xls)'],
@@ -753,7 +753,7 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
               ))}
             </select>
           </label>
-          <p>
+          <p className="exportHint" id="export-hint">
             {['csv', 'tsv'].includes(format)
               ? 'Values from the active sheet.'
               : ['docx', 'pdf'].includes(format)
