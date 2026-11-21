@@ -17,3 +17,8 @@ test('literal typing commands also resolve when Nemotron returns an acknowledgem
   const values = [['A', 'B'], [1, 2]]
   assert.deepEqual(interpret([{ op: 'write', range: 'J4', values }])[0].values, values)
 })
+test('a workbook title denotes the current sheet only when it is not already a sheet name', () => {
+  const reply = {message: 'Drawn.', actions:[{op:'smiley', range:'B2', sheet:'Budget'}]}
+  assert.equal(interpretReply(reply, 'Draw a smile', 'Sheet 1', 'Budget', ['Sheet 1']).actions[0].sheet, 'Sheet 1')
+  assert.equal(interpretReply(reply, 'Draw a smile', 'Sheet 1', 'Budget', ['Sheet 1','Budget']).actions[0].sheet, 'Budget')
+})
