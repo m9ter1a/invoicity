@@ -40,15 +40,17 @@ try {
   await page.getByText('No matching documents.').waitFor()
   await page.getByRole('button', { name: 'Clear search' }).click()
   await page.screenshot({ path: path.join(temp, 'home.png') })
-  await page.getByRole('button', { name: 'Quarterly invoices' }).click()
-  await page.getByRole('button', { name: 'Check invoice', exact: true }).click()
-  await page.getByText('Invoice check', { exact: true }).waitFor()
-  assert.match(
-    await page.locator('dialog').innerText(),
-    /No invoice fields detected/,
-  )
-  await page.getByRole('button', { name: 'Close' }).click()
-  await page.getByRole('button', { name: 'Back to documents' }).click()
+  const bookmarked = page.getByRole('button', { name: 'Bookmarked', exact: true })
+  const all = page.getByRole('button', { name: 'All', exact: true })
+  await bookmarked.click()
+  await page.getByText('No bookmarked documents yet.').waitFor()
+  await all.click()
+  await page.getByRole('button', { name: 'Bookmark document' }).click()
+  await bookmarked.click()
+  await page.getByRole('button', { name: 'Quarterly invoices' }).waitFor()
+  await page.getByRole('button', { name: 'Remove bookmark' }).click()
+  await page.getByText('No bookmarked documents yet.').waitFor()
+  await all.click()
   await writeFile(
     path.join(temp, 'sample.csv'),
     'Position,Qty,Rate\nService,2,100',
@@ -62,6 +64,34 @@ try {
   await page.getByRole('button', { name: /Import a file/ }).click()
   await page.getByRole('textbox', { name: 'Document name' }).fill('Import test')
   await page.getByRole('textbox', { name: 'Document name' }).press('Enter')
+  assert.equal(await page.getByRole('button', { name: 'Check invoice', exact: true }).count(), 0)
+  const divider = page.getByRole('separator', { name: 'Resize chat' })
+  const panel = page.getByRole('complementary', { name: 'Invoicity chat' })
+  const originalWidth = (await panel.boundingBox()).width
+  async function drag(element, dx, dy) {
+    const r = await element.boundingBox()
+    const x = r.x + r.width / 2, y = r.y + r.height / 2
+    await page.mouse.move(x, y)
+    await page.mouse.down()
+    await page.mouse.move(x + dx, y + dy, { steps: 8 })
+    await page.mouse.up()
+  }
+  await drag(divider, -80, 0)
+  assert.ok(Math.abs((await panel.boundingBox()).width - originalWidth - 80) < 2)
+  await divider.press('ArrowRight')
+  assert.ok(Math.abs((await panel.boundingBox()).width - originalWidth - 56) < 2)
+  const closeChat = page.getByRole('button', { name: 'Close chat' })
+  await closeChat.click()
+  const launcher = page.getByRole('button', { name: 'Open Invoicity chat' })
+  const before = await launcher.boundingBox()
+  await drag(launcher, -110, -65)
+  const after = await launcher.boundingBox()
+  assert.ok(Math.abs(after.x - before.x + 110) < 2 && Math.abs(after.y - before.y + 65) < 2, JSON.stringify({before, after, position: await page.evaluate(() => localStorage.getItem("chat-launcher"))}))
+  await launcher.click()
+  assert.ok(Math.abs((await panel.boundingBox()).width - originalWidth - 56) < 2)
+  await closeChat.click()
+  assert.ok(Math.abs((await launcher.boundingBox()).x - after.x) < 2)
+  await launcher.press('Enter')
   const text = page.getByRole('textbox', { name: 'Message Invoicity' })
   await writeFile(path.join(temp, 'receipt.txt'), 'Control value for D2 = 42')
   await app.evaluate(
@@ -81,6 +111,12 @@ try {
   assert.equal(await page.getByRole('button', { name: 'Apply changes' }).count(), 0)
   await receipt.click()
   await page.getByText(/Sheet 1 · D2/i).waitFor()
+  await text.fill('in J4 type "yooo"')
+  await text.press('Enter')
+  await page.locator('.agentGlow').waitFor()
+  await page.locator('.agentCursor').first().waitFor()
+  await receipt.nth(1).waitFor({ timeout: 190000 })
+  await page.screenshot({ path: path.join(temp, 'chat.png') })
   for (const ext of ['xlsx', 'xls', 'ods', 'csv', 'tsv', 'docx', 'pdf']) {
     await page.getByRole('button', { name: 'Export', exact: true }).click()
     await page.locator('select').selectOption(ext)
@@ -93,11 +129,22 @@ try {
     const data = await readFile(out)
     assert.ok(data.length > 0)
     if (ext === 'csv') assert.match(data.toString(), /Service,2,100,42/)
+    if (ext === 'xlsx') {
+      const XLSX = require('xlsx')
+      const workbook = XLSX.read(data)
+      assert.equal(workbook.Sheets[workbook.SheetNames[0]].J4.v, 'yooo')
+    }
     if (ext === 'pdf') assert.equal(data.toString('ascii', 0, 4), '%PDF')
   }
   await page.getByRole('button', { name: 'Back to documents' }).click()
   await page.getByRole('button', { name: 'Import test', exact: true }).click()
-  await receipt.waitFor()
+  await receipt.nth(1).waitFor()
+  const stored = await page.evaluate(async () => {
+    const entry = (await window.localDesk.list()).find(b => b.name === 'Import test')
+    const { snapshot } = await window.localDesk.read(entry.id)
+    return snapshot.sheets[snapshot.sheetOrder[0]].cellData[3][9].v
+  })
+  assert.equal(stored, 'yooo')
   console.log('PASS desktop flow; screenshots and exports:', temp)
 } catch (e) {
   const p = await app.firstWindow()
