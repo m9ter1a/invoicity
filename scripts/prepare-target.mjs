@@ -44,7 +44,11 @@ if (!existsSync(path.join(nativeDir, '.b12611')) || !existsSync(path.join(native
   await fetchFile('https://github.com/ggml-org/llama.cpp/releases/download/b12611/llama-b12611-bin-'+runtime[0],archive,runtime[1])
   const stage = await mkdtemp('vendor/.engine-')
   if (platform === 'win32' && process.platform === 'linux') execFileSync('unzip',['-q',archive,'-d',stage])
-  else execFileSync('tar',['-xf',archive,'-C',stage,...(platform === 'win32' ? [] : ['--strip-components=1'])])
+  else {
+    // Git Bash's GNU tar cannot unpack ZIP files. Windows ships bsdtar.
+    const tar = process.platform === 'win32' ? path.join(process.env.SystemRoot,'System32','tar.exe') : 'tar'
+    execFileSync(tar,['-xf',archive,'-C',stage,...(platform === 'win32' ? [] : ['--strip-components=1'])])
+  }
   if (!existsSync(path.join(stage,server))) throw Error('Missing runtime: '+server)
   await writeFile(path.join(stage,'.b12611'),'')
   await rm(nativeDir,{recursive:true,force:true})
