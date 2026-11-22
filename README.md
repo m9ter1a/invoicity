@@ -46,15 +46,32 @@ When you send a message, the app captures the visible spreadsheet area. SmolVLM 
 
 Each workbook has its own chat. Under **Chat context**, you can compress the conversation into a Nemotron summary or clear it entirely. Both actions require confirmation. Subsequent requests use the summary and recent messages within an 8,200-character history budget. To remove a workbook and its chat, click the trash icon in the workspace and confirm. Invoicity moves the local copy to the system trash and preserves the file you originally imported.
 
-## Bundled models
+## Under the hood: the Invoicity quantization
 
-- **Finance assistant:** Tere Labs’ Invoicity quantization of NVIDIA Nemotron 3 Nano 4B. The importance matrix was calibrated on the app’s finance prompts, workbooks, and JSON action plans. Mamba output and attention projection tensors use Q8_0, with the standard Q4_K_M mix for the remaining tensors. [Tere Labs model](https://huggingface.co/terelabs/Nemotron-3-Nano-4B-Invoicity-GGUF) · [NVIDIA base model](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16)
+Invoicity ships **Tere Labs’ Q4_K_M GGUF** of NVIDIA Nemotron 3 Nano 4B. Its weights take up **3.15 GB**, down from **7.95 GB** for NVIDIA’s BF16 weights. On 200 held-out Invoicity requests, the local model produced the same spreadsheet operations as BF16 **170 times (85%)**.
+
+![Invoicity quantization benchmark. The weight file is 60.3% smaller than BF16. The chart plots file size against action-plan agreement for four Q4_K_M variants. Full results are in the table below.](invoicity-quantization.png)
+
+| Model | Weight file size | Action plans matching BF16 |
+| --- | ---: | ---: |
+| NVIDIA Nemotron 3 Nano 4B (BF16) | 7.95 GB | Reference |
+| NVIDIA official Q4_K_M | 2.84 GB | 72.5% |
+| Unsloth Q4_K_M | 2.90 GB | 81.5% |
+| Bartowski Q4_K_M | 2.98 GB | 82.5% |
+| **Tere Labs Invoicity Q4_K_M** | **3.15 GB** | **85.0%** |
+
+**What counts as a match?** Tere Labs ran the same 200 prompts through each model with llama.cpp b12611, reasoning off, temperature zero, and JSON output. Invoicity’s parser converted each reply into spreadsheet operations. A match means those operations were identical to BF16’s for that prompt. This measures agreement with the reference model. File sizes are decimal GB for the weights alone.
+
+**How the quant was built.** Tere Labs calibrated an importance matrix on 1,416 chunks of 512 tokens each. About two thirds came from Invoicity prompts, synthetic finance workbooks, and BF16 replies. The rest came from WikiText. The quant keeps Mamba output and attention projections at Q8_0 and uses the Q4_K_M mix elsewhere. It matched BF16 on 25 more requests than NVIDIA’s official Q4_K_M, with similar CPU throughput in the published eight-thread benchmark.
+
+The app pins the model revision and SHA-256 checksum in its [model manifest](src/finance-model.json) and verifies the weights when packaging. The distribution includes the NVIDIA Nemotron Open Model License. NVIDIA lists English as the supported language. Invoicity also accepts Russian prompts, with results varying by task.
+
+[Quantized weights and benchmark methodology](https://huggingface.co/terelabs/Nemotron-3-Nano-4B-Invoicity-GGUF) · [NVIDIA BF16 weights](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16/tree/main)
+
+## Vision and dictation models
+
 - **Spreadsheet vision:** SmolVLM-500M-Instruct describes the editor screenshot. Its weights and vision projector together occupy about 520 MiB. [Vision model](https://huggingface.co/ggml-org/SmolVLM-500M-Instruct-GGUF)
 - **Voice input:** Multilingual Whisper Base transcribes microphone input locally through whisper.cpp.
-
-On 200 held-out prompts, the Tere Labs quantization matched the BF16 model’s action plan in 85% of cases. The standard Q4_K_M quantization without an importance matrix matched it in 72.5%. The Tere Labs file was 316 MB larger and had the same measured CPU speed in that evaluation. NVIDIA lists English as the supported language. The app also accepts Russian prompts, with results varying by task.
-
-The finance model revision and SHA-256 checksum are pinned in the [model manifest](src/finance-model.json). The packager verifies the bundled file against that checksum. Each distribution includes the NVIDIA Nemotron Open Model License.
 
 ## Build from source
 
