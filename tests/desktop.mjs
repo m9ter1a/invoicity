@@ -1,3 +1,4 @@
+import historicalRequests from './drawing-requests.json' with { type: 'json' }
 import { _electron as electron } from 'playwright-core'
 import assert from 'node:assert/strict'
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
@@ -277,7 +278,7 @@ try {
   await text.fill('Paint a large smiling face in D6.')
   await text.press('Enter')
   await receipt.first().waitFor({timeout:190000})
-  await text.fill('нарисуй дракона')
+  await text.fill(historicalRequests.drawDragon)
   await text.press('Enter')
   await receipt.nth(1).waitFor({timeout:190000})
   await button('Back to documents').click()
@@ -304,7 +305,7 @@ try {
   assert.ok(dragon.colorCount > 10)
   console.log('Follow-up drawing:', dragon)
   await button('Drawing test').click()
-  await text.fill('я говорю дракона нарисуй')
+  await text.fill(historicalRequests.correctPreviousDrawing)
   await text.press('Enter')
   await receipt.nth(2).waitFor({timeout:190000})
   assert.match(await page.locator('.msg.assistant').last().innerText(),/dragon|🐉|🐲/iu)

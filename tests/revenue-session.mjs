@@ -58,9 +58,9 @@ try {
   await button('Skip tour').click()
   await app.evaluate(({dialog}, file) => { dialog.showOpenDialog = async () => ({filePaths:[file]}) }, input)
   await button('Import a file').click()
-  const first = await ask('Какая суммарная выручка магазина North за месяц по четырём недельным итогам G2, M2, S2 и Y2? Ответь в чате.')
-  const formulaAnswer = await ask('В Z2 запиши формулу средней недельной выручки North по ячейкам G2, M2, S2 и Y2. В ячейке должен показываться рассчитанный результат.')
-  await ask('Нарисуй дракона прямо по середине таблицы.')
+  const first = await ask('What is the total monthly revenue for the North store across weekly totals G2, M2, S2 and Y2? Answer in the chat.')
+  const formulaAnswer = await ask('Write a formula in Z2 for the average weekly revenue for North using cells G2, M2, S2 and Y2. The cell should show the calculated result.')
+  await ask('Draw a dragon in the middle of the sheet.')
   await page.waitForFunction(async () => {
     const [item] = await window.localDesk.list()
     const {messages} = await window.localDesk.read(item.id)
@@ -71,7 +71,7 @@ try {
   await contextAction('Compress context','Compress chat')
   const compressed = await saved()
   console.log('Compressed memory:', compressed.messages)
-  const recall = await ask('Какую сумму выручки мы получили в первом расчёте?')
+  const recall = await ask('Remind me of the total revenue from the first calculation.')
   await contextAction('Clear context','Clear chat')
   const finalBook = await saved()
   const sheet = finalBook.snapshot.sheets[finalBook.snapshot.sheetOrder[0]]

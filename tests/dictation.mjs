@@ -9,6 +9,7 @@ import os from 'node:os'
 const binary = process.env.INVOICITY_BINARY
 const fixture = path.resolve(process.argv[2] || 'vendor/downloads/whisper-src-1.8.2/samples/jfk.wav')
 const expected = process.argv[3] || 'country'
+const language = process.argv[4] || 'auto'
 const profile = await mkdtemp(path.join(os.tmpdir(), 'invoicity-dictation-'))
 const app = await electron.launch({
   executablePath: binary || createRequire(import.meta.url)('electron'),
@@ -23,6 +24,9 @@ try {
   await button('Skip tour').click()
   await button('New spreadsheet').click()
   const draft = page.getByRole('textbox', { name: 'Message Invoicity' })
+  const picker = page.getByRole('combobox', {name: 'Dictation language'})
+  assert.equal(await picker.inputValue(), 'auto')
+  await picker.selectOption(language)
   await draft.fill('Existing draft.')
   await page.evaluate(async base64 => {
     const audio = new AudioContext()
@@ -71,6 +75,7 @@ try {
   assert.equal(await page.evaluate(() => window.fixtureTrack.readyState), 'ended')
   await page.getByRole('button', { name: /open invoicity/i }).click()
   assert.equal(await draft.inputValue(), 'Edited draft.')
+  assert.equal(await picker.inputValue(), language)
 
   await start()
   await page.evaluate(() => window.playFixture())
