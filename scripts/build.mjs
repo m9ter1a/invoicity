@@ -19,6 +19,7 @@ await build({
   legalComments: 'eof',
   logLevel: 'info',
 })
+await copyFile('src/voice-capture.js', 'dist/voice-capture.js')
 await copyFile('src/index.html', 'dist/index.html')
 
 const { cp } = await import('node:fs/promises')

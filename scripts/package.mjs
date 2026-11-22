@@ -92,6 +92,7 @@ const [result] = await packager({
   name: 'Invoicity',
   appBundleId: 'app.invoicity.desktop',
   extendInfo: {
+    NSMicrophoneUsageDescription: 'Dictate messages to Invoicity Agent. Your voice is transcribed on this device.',
     CFBundleDevelopmentRegion: 'en',
     CFBundleLocalizations: ['en'],
   },
@@ -116,6 +117,8 @@ await cp(nativeDir, path.join(vendor,'llama'), {
   filter: file => file === nativeDir || /(?:\.dll|\.dylib|\.so(?:\.[0-9.]+)?)$/i.test(file) ||
     /^(llama-server(\.exe)?|LICENSE.*)$/.test(path.basename(file)),
 })
+await cp('vendor/voice-' + platform, path.join(vendor, 'voice-' + platform), { recursive: true })
+await copyFile('vendor/models/whisper-base-q5_1.bin', path.join(vendor, 'models/whisper-base-q5_1.bin'))
 if (platform === 'darwin') await copyFile('vendor/extract', path.join(vendor,'extract'))
 for (const file of ['nemotron.gguf','NVIDIA-License.pdf','SmolVLM-500M-Instruct-Q8_0.gguf','mmproj-SmolVLM-500M-Instruct-Q8_0.gguf','SmolVLM-LICENSE.txt'])
   await copyFile(path.join('vendor/models',file), path.join(vendor,'models',file))
