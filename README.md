@@ -1,52 +1,91 @@
 # Invoicity
 
-Локальное приложение для финансового отдела. Поддерживаются macOS на Apple Silicon, Windows x64 и Linux x64. Веса Nemotron от Tere Labs, SmolVLM и многоязычной Whisper Base входят в каждую сборку. На Mac используется Metal, на Windows и Linux — CPU.
+Invoicity is a free, local AI finance assistant for spreadsheets. Give it a transaction report, ask for a weekly revenue breakdown, and inspect the numbers and formulas in an editable workbook. The desktop app includes the models for chat, vision, and dictation, so your finance team can work offline.
 
-После «Get started» открывается рабочая область. Однократный интерактивный тур выделяет создание, импорт, поиск и закладки. На любом шаге можно нажать «Skip tour». Светлая тема включена по умолчанию. Переключатель в заголовке рабочей области и редактора запоминает выбор.
+[Download Invoicity](https://invoicity.org/) · [GitHub Releases](https://github.com/m9ter1a/invoicity/releases)
 
-В чате кнопка микрофона включает локальную диктовку. После паузы распознанная фраза дополняет черновик. Через две секунды тишины после речи приложение отправит сообщение агенту. Нажмите на круг раньше, чтобы остановить диктовку и отредактировать черновик.
+## Install the desktop app
 
-## Первый тест
+| Platform | How to install |
+| --- | --- |
+| macOS on Apple Silicon | Extract the `.tar.gz` archive and open `Invoicity.app`. The app has an ad hoc signature. |
+| Windows x64 | Extract the entire ZIP archive, then open `Invoicity.exe` inside the extracted folder. |
+| Ubuntu 24.04 x64 | In the download directory, run `sudo apt install ./invoicity_0.1.11_amd64.deb`, then open Invoicity from the applications menu. Adjust the filename for other versions. |
 
-1. Нажмите «New spreadsheet» или импортируйте свою таблицу через «Import a file».
-2. В чате Invoicity напишите «Write 42 into D2». Значение появится в D2 автоматически. Под ответом можно раскрыть подробности изменения.
-3. Для проверки инвойса выберите «Review this invoice» в чате.
-4. Нажмите «Export». Для CSV и TSV выгружается активный лист. Для XLSX, XLS, ODS, DOCX и PDF выгружается книга.
+The finance model uses Metal on Apple Silicon and runs on the CPU on Windows and Linux. The team selected it for machines with 16 GB of memory. The 0.1 builds are intended for internal testing.
 
-## Возможности первой версии
+## Try a revenue report
 
-Редактор Univer поддерживает листы, формулы, выделение диапазонов, вставку из буфера, изменение размеров, сортировку, фильтры, форматирование, объединение, отмену и повтор. На главном экране доступны создание пустой книги, история, закладки, поиск документов по названию и импорт XLSX, XLS, XLSB, ODS, CSV и TSV.
+1. Choose **Get started**, then **New spreadsheet**. To work with an existing workbook, choose **Import a file**. The optional first-run tour shows where to create, import, search, and bookmark workbooks.
+2. Attach a small PDF that lists transaction dates, regions, and amounts. In **Invoicity Agent**, type “Build a table of weekly revenue by region from this PDF. Add a total for each week.”
+3. Check the resulting cells and expand the change details under the reply. Select a total and ask “Which transactions make up this number?” To try a simple edit in a blank workbook, ask “Write 42 into D2.”
+4. Choose **Export** to save the report. CSV and TSV export the active sheet. The other export formats include the whole workbook.
 
-Ассистент видит данные книги, текущий лист и выделение. Можно прикрепить до двух текстовых файлов, таблиц, DOCX, PDF или изображений. PDF с текстовым слоем читается напрямую, для сканов и изображений используется Apple Vision на Mac и локальный Tesseract с английским и русским языками на Windows и Linux. При обработке длинных файлов отображается отметка о фрагменте. Контекст ограничен 9 200 символами ячеек и 6 000 символами на вложение. В PDF читаются первые 30 страниц. Для точного вопроса по большой книге выделите нужные ячейки.
+To dictate a request, click the microphone in the chat. Local speech recognition adds the words to your draft. After two seconds of silence following speech, the app sends the request. Click the recording indicator before then to stop and edit the draft yourself.
 
-Действия модели проходят через разрешённые операции редактора. Доступны запись значений и формул, изменение структуры, форматирование диапазонов, сортировка и фильтр. Перед применением сверяется состояние листов. Автоматическая проверка ищет ошибки формул, расхождения в суммах позиций, пустые реквизиты и повтор номеров у поставщика в реестре. Сложные макросы, сводные таблицы, диаграммы и полная совместимость со всеми файлами Google Sheets и Excel находятся за пределами v0.1. При экспорте внешний вид сложных исходных книг может измениться.
+## Workbooks and attachments
 
-## Данные
+The Univer editor supports multiple sheets, formulas, range selection, clipboard paste, row and column resizing, sorting, filters, formatting, merged cells, undo, and redo. The workspace keeps a searchable history and bookmarks. It starts in light mode and remembers your theme preference.
 
-В меню «Chat context» можно очистить переписку открытой книги или заменить её кратким резюме Nemotron. Для каждого действия открывается подтверждение. При следующем запросе модель получает резюме и недавние сообщения в пределах 8 200 символов. Кнопка корзины в списке документов перемещает локальную книгу вместе с чатом в корзину системы после подтверждения. Исходный файл импорта остаётся на месте.
+| Operation | Supported formats |
+| --- | --- |
+| Import a spreadsheet | XLSX, XLS, XLSB, ODS, CSV, TSV |
+| Export a workbook | XLSX, XLS, ODS, DOCX, PDF |
+| Export the active sheet | CSV, TSV |
+| Attach to a chat | Up to two text files, spreadsheets, Word documents (DOCX), PDFs, or images per request |
 
-При отправке сообщения приложение захватывает видимую область редактора. Локальная SmolVLM описывает снимок, а Nemotron получает это описание, карту заливок до 32 × 32 видимых ячеек, данные книги и выделение. Попробуйте «Draw a smiling face using colored cells starting at B2». Веса и проектор SmolVLM занимают около 520 МиБ и входят в автономное приложение. [Модель для обработки изображений](https://huggingface.co/ggml-org/SmolVLM-500M-Instruct-GGUF)
+The agent can write values and formulas, change sheet structure, format ranges, sort, and filter. It checks the sheet state before applying edits. Choose **Review this invoice** to check for formula errors, inconsistent line-item totals, missing invoice details, and duplicate invoice numbers for a supplier. Macros, pivot tables, and charts are outside the scope of 0.1, and complex workbooks may look different after export.
 
-Книги и история сообщений хранятся в каталоге books внутри userData приложения в профиле текущего пользователя. Файлы записываются атомарно с доступом для владельца. Данные размещаются открытым текстом под защитой учётной записи пользователя и настроек диска. Приложение обращается к модели через 127.0.0.1 и случайный ключ сеанса. Внешние запросы интерфейса блокируются. Модель загружается в память по первому запросу и завершается вместе с приложением.
+The app extracts embedded PDF text directly. For scanned documents and images, it uses Apple Vision on macOS and local Tesseract OCR with English and Russian language data on Windows and Linux. It reads up to the first 30 PDF pages and marks partial extracts. Each request can include up to 9,200 characters of cell data and 6,000 characters per attachment. Select the relevant cells when asking about a large workbook.
 
-## Сборка из исходников
+## Privacy and chat memory
 
-Требуются Node.js 24+, npm, curl, tar, CMake и компилятор C++. Для macOS также нужны Apple Command Line Tools. Первая сборка загружает движки и модели. После распаковки приложение работает автономно.
+Workbooks and chat histories are saved in the `books` folder inside Electron’s per-user `userData` directory. Invoicity writes files atomically and requests owner-only file permissions. The files contain plain text, so protection at rest depends on the user account and disk settings.
+
+When you send a message, the app captures the visible spreadsheet area. SmolVLM describes it locally. Nemotron receives that description, a map of fill colors for up to 32 × 32 visible cells, workbook data, and the current selection. The model server listens on `127.0.0.1` and uses a random session key. The app blocks external network requests from the interface, loads the model on first use, and stops it when the app closes.
+
+Each workbook has its own chat. Under **Chat context**, you can compress the conversation into a Nemotron summary or clear it entirely. Both actions require confirmation. Subsequent requests use the summary and recent messages within an 8,200-character history budget. To remove a workbook and its chat, click the trash icon in the workspace and confirm. Invoicity moves the local copy to the system trash and preserves the file you originally imported.
+
+## Bundled models
+
+- **Finance assistant:** Tere Labs’ Invoicity quantization of NVIDIA Nemotron 3 Nano 4B. The importance matrix was calibrated on the app’s finance prompts, workbooks, and JSON action plans. Mamba output and attention projection tensors use Q8_0, with the standard Q4_K_M mix for the remaining tensors. [Tere Labs model](https://huggingface.co/terelabs/Nemotron-3-Nano-4B-Invoicity-GGUF) · [NVIDIA base model](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16)
+- **Spreadsheet vision:** SmolVLM-500M-Instruct describes the editor screenshot. Its weights and vision projector together occupy about 520 MiB. [Vision model](https://huggingface.co/ggml-org/SmolVLM-500M-Instruct-GGUF)
+- **Voice input:** Multilingual Whisper Base transcribes microphone input locally through whisper.cpp.
+
+On 200 held-out prompts, the Tere Labs quantization matched the BF16 model’s action plan in 85% of cases. The standard Q4_K_M quantization without an importance matrix matched it in 72.5%. The Tere Labs file was 316 MB larger and had the same measured CPU speed in that evaluation. NVIDIA lists English as the supported language. The app also accepts Russian prompts, with results varying by task.
+
+The finance model revision and SHA-256 checksum are pinned in the [model manifest](src/finance-model.json). The packager verifies the bundled file against that checksum. Each distribution includes the NVIDIA Nemotron Open Model License.
+
+## Build from source
+
+Install Node.js 24 or later, npm, curl, tar, CMake, and a C++ toolchain. On macOS, install the Apple Command Line Tools as well. The preparation step downloads the pinned runtimes and model weights and builds the local speech engine. Run these commands from the repository root on your target platform:
 
 ```sh
 npm ci
 node scripts/prepare-target.mjs
 npm test
+npm start
+```
+
+To package and test the desktop app after preparation:
+
+```sh
 npm run package
 node tests/platform.mjs
 ```
 
-На macOS распакуйте архив и откройте Invoicity.app. На Windows извлеките весь ZIP и откройте Invoicity.exe. На Ubuntu 24.04 x64 установите пакет командой `sudo apt install ./invoicity_0.1.11_amd64.deb` и откройте Invoicity из меню приложений. Сборка macOS имеет локальную подпись ad hoc. Версии предназначены для внутреннего тестирования.
+On headless Linux, run the platform check with `xvfb-run -a node tests/platform.mjs`. To produce a downloadable archive or Debian package, run `python3 scripts/distribute.py TARGET` with `darwin`, `win32`, or `linux`. The output and its SHA-256 checksum are written to `release/downloads/`.
 
-Для кросс-сборки сначала соберите whisper-cli на целевой системе командой `node scripts/prepare-voice.mjs` и скопируйте папку `vendor/voice-TARGET` на сборочную машину. На Mac для кросс-сборки передайте `linux` или `win32` в обе команды `node scripts/prepare-target.mjs TARGET` и `npm run package -- TARGET`. Для создания пакета или архива выполните `python3 scripts/distribute.py TARGET`. Файлы и контрольные суммы будут в `release/downloads`.
+For cross-packaging on a Mac, first run `node scripts/prepare-voice.mjs` on the target OS and copy the resulting `vendor/voice-TARGET` directory to the build machine. Pass the same target to both `node scripts/prepare-target.mjs TARGET` and `npm run package -- TARGET`.
 
-В GitHub Releases скачайте все пронумерованные части своей версии и файл SHA-256. На Mac или Linux объедините их командой `cat NAME.part* > NAME`, на Windows в cmd.exe — `copy /b NAME.part1+NAME.part2+NAME.part3 NAME`. Подставьте полное имя архива или пакета вместо NAME и сравните SHA-256 собранного файла с опубликованной суммой.
+### Reassemble a split GitHub release
 
-## Модель
+The website serves a single download. If you use GitHub Releases instead, download every numbered part for your platform and its matching `.sha256` file into the same directory. Replace `NAME` below with the full archive or package filename and list all parts in numeric order.
 
-Используется [квант Tere Labs](https://huggingface.co/terelabs/Nemotron-3-Nano-4B-Invoicity-GGUF) модели [NVIDIA Nemotron 3 Nano 4B](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16). Матрица важности рассчитана на запросах в формате Invoicity: системный промпт приложения, финансовые книги и JSON-планы. Выход блоков Mamba и проекции внимания хранятся в Q8_0, остальные тензоры — в стандартной смеси Q4_K_M. На 200 отложенных запросах квант возвращает тот же план действий, что BF16, в 85% случаев. Официальный Q4_K_M без матрицы важности даёт 72.5%. Файл больше на 316 МБ, скорость на CPU не изменилась. Модель выбрана для компьютера с 16 ГБ общей памяти. NVIDIA указывает английский как поддерживаемый язык. Русскоязычные запросы доступны, качество ответов зависит от задачи. NVIDIA Nemotron Open Model License включена в дистрибутив. Ревизия и контрольная сумма закреплены в `src/finance-model.json`. Упаковщик проверяет SHA-256 файла внутри каждой сборки.
+| Platform | Join the parts (three-part example) | Verify the result |
+| --- | --- | --- |
+| macOS | `cat NAME.part1 NAME.part2 NAME.part3 > NAME` | `shasum -a 256 -c NAME.sha256` |
+| Linux | `cat NAME.part1 NAME.part2 NAME.part3 > NAME` | `sha256sum -c NAME.sha256` |
+| Windows (Command Prompt) | `copy /b NAME.part1+NAME.part2+NAME.part3 NAME` | Run `certutil -hashfile NAME SHA256` and compare its output with `NAME.sha256`. |
+
+Once the checksum matches, follow the installation instructions for your platform above.
