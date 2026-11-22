@@ -383,7 +383,7 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
   const [name, setName] = useState(initial.name),
     [messages, setMessages] = useState(initial.messages || []),
     [text, setText] = useState(''),
-    [dictating, setDictating] = useState(false),
+    [dictationState, setDictationState] = useState('idle'),
     [files, setFiles] = useState([]),
     [busy, setBusy] = useState(false),
     [chatOpen, setChatOpen] = useState(true),
@@ -392,6 +392,7 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
     [activity, setActivity] = useState(null),
     [ready, setReady] = useState(false),
     [failed, setFailed] = useState('')
+  const dictating = dictationState === 'recording'
   const { width, divider } = useChatWidth()
   const messageInput = useRef(null)
   useEffect(() => {
@@ -529,6 +530,12 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
       if (live.current) setBusy(false)
     }
   }
+  // Submit from the render containing the final transcript, current edits and attachments.
+  useEffect(() => {
+    if (dictationState !== 'submit') return
+    setDictationState('idle')
+    if (chatOpen && model.installed) ask()
+  }, [dictationState])
   async function updateContext(mode) {
     if (busy) return
     setBusy(true)
@@ -704,7 +711,7 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
                   <IconButton title="Chat context" disabled={busy || dictating} onClick={() => setModal('context')}>
                     <Database size={17} />
                   </IconButton>
-                  <Dictation disabled={busy} atLimit={text.length >= 2500} onActive={setDictating} notify={notify}
+                  <Dictation disabled={busy} atLimit={text.length >= 2500} onState={setDictationState} notify={notify}
                     focus={() => messageInput.current?.focus()}
                     append={words => setText(previous =>
                       (previous + (previous && !/\s$/.test(previous) ? ' ' : '') + words).slice(0, 2500))} />

@@ -9,7 +9,7 @@ function release(session) {
   if (session.audio && session.audio.state !== 'closed') session.audio.close().catch(() => {})
 }
 
-export function Dictation({ disabled, atLimit, onActive, append, notify, focus }) {
+export function Dictation({ disabled, atLimit, onState, append, notify, focus }) {
   const current = useRef(null)
   const orb = useRef(null)
   const [phase, setPhase] = useState('idle')
@@ -19,7 +19,7 @@ export function Dictation({ disabled, atLimit, onActive, append, notify, focus }
     current.current = null
     release(session)
     if (session.pending) window.localDesk.cancelVoice(session.id).catch(() => {})
-    onActive(false)
+    onState('idle')
   }
   useLayoutEffect(() => discard, [])
   useEffect(() => {
@@ -52,9 +52,9 @@ export function Dictation({ disabled, atLimit, onActive, append, notify, focus }
       }).catch(error => fail(session, error)).finally(() => { session.pending-- })
     }
     session.frames = []
-    session.length = session.voiced = session.quiet = 0
+    session.length = session.voiced = 0
   }
-  async function stop(session) {
+  async function stop(session, sendAfterSilence = false) {
     if (session.stopping) return
     session.stopping = true
     release(session)
@@ -64,17 +64,18 @@ export function Dictation({ disabled, atLimit, onActive, append, notify, focus }
     if (current.current !== session) return
     if (session.node && !session.transcribed) notify('No speech detected. Check your microphone and try again.')
     current.current = null
-    onActive(false)
+    const send = sendAfterSilence && session.transcribed
+    onState(send ? 'submit' : 'idle')
     setPhase('idle')
-    focus()
+    if (!send) focus()
   }
   async function start() {
     if (disabled || atLimit || current.current) return
     const session = { id: crypto.randomUUID(), frames: [], length: 0, voiced: 0, quiet: 0,
-      pending: 0, queue: Promise.resolve(), stopping: false }
+      heardSpeech: false, pending: 0, queue: Promise.resolve(), stopping: false }
     current.current = session
     setPhase('starting')
-    onActive(true)
+    onState('recording')
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: false }, video: false })
       if (current.current !== session || session.stopping) {
@@ -100,9 +101,14 @@ export function Dictation({ disabled, atLimit, onActive, append, notify, focus }
         session.length += data.length
         if (level >= 0.006) {
           session.voiced += data.length
+          if (session.voiced >= rate * 0.12) session.heardSpeech = true
           session.quiet = 0
         } else {
           session.quiet += data.length
+          if (session.heardSpeech && session.quiet > rate * 2) {
+            stop(session, true)
+            return
+          }
           // Keep a short lead-in so the next phrase retains its first consonant.
           if (!session.voiced && session.frames.length > 5) session.length -= session.frames.shift().length
         }
@@ -124,10 +130,10 @@ export function Dictation({ disabled, atLimit, onActive, append, notify, focus }
     }
   }
   const active = phase !== 'idle'
-  const status = { starting: 'Opening microphone…', listening: 'Listening…', finishing: 'Transcribing…' }[phase]
+  const status = { starting: 'Opening microphone…', finishing: 'Transcribing…' }[phase]
   const label = active ? 'Stop dictation' : 'Dictate message'
   return <span className="voiceControl">
-    <span className="voiceStatus" role="status">{status}</span>
+    {status && <span className="voiceStatus" role="status">{status}</span>}
     <button ref={orb} type="button" className="voiceButton" data-phase={phase}
       aria-label={label} title={label} aria-pressed={active} disabled={phase === 'finishing' || (!active && (disabled || atLimit))}
       onClick={() => active ? stop(current.current) : start()}>
