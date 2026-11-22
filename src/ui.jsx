@@ -279,8 +279,8 @@ function App() {
                           title={i.star ? 'Remove bookmark' : 'Bookmark document'}
                           onClick={async () => {
                             try {
-                              await api.toggleStar(i.id)
-                              await refresh()
+                              const star = await api.toggleStar(i.id)
+                              setItems(items => items.map(item => item.id === i.id ? { ...item, star } : item))
                             } catch (e) {
                               notify(e)
                             }

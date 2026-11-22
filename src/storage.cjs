@@ -59,20 +59,28 @@ function storage(dir) {
   }
   const read = (id) =>
     localizeSample(JSON.parse(fs.readFileSync(file(id), 'utf8')))
-  const save = (book) => {
+  const write = (book) => {
     if (!book.name?.trim() || !book.snapshot?.sheetOrder?.length)
       throw Error('The workbook needs a name and at least one sheet.')
     const dst = file(book.id),
       temp = dst + '.tmp'
-    book.updated = new Date().toISOString()
     fs.writeFileSync(temp, JSON.stringify(book), { mode: 0o600, flush: true })
     fs.renameSync(temp, dst)
-    return book.updated
   }
   return {
     file,
     read,
-    save,
+    save(book) {
+      book.updated = new Date().toISOString()
+      write(book)
+      return book.updated
+    },
+    toggleStar(id) {
+      const book = read(id)
+      book.star = !book.star
+      write(book)
+      return book.star
+    },
     list: () =>
       fs
         .readdirSync(dir)
