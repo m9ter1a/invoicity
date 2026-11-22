@@ -37,31 +37,50 @@ try {
       source.buffer = buffer
       const output = audio.createMediaStreamDestination()
       source.connect(output)
-      source.start(audio.currentTime + 1)
+      window.playFixture = () => source.start(audio.currentTime + 0.05)
       window.fixtureTrack = output.stream.getAudioTracks()[0]
       return output.stream
     }
   }, (await readFile(fixture)).toString('base64'))
-  await button('Dictate message').click()
-  await page.getByText('Listening…', { exact: true }).waitFor({ timeout: 10000 })
-  await page.waitForFunction(() => document.querySelector('.voiceButton').style.getPropertyValue('--voice-scale') > 1, null, { timeout: 20000, polling: 100 })
-  await page.waitForFunction(word => document.querySelector('.composer textarea').value.toLowerCase().includes(word), expected, { timeout: 55000, polling: 100 })
+  const start = async () => {
+    await button('Dictate message').click()
+    await page.locator('.voiceButton[data-phase="listening"]').waitFor()
+    assert.equal(await page.getByText('Listening…', { exact: true }).count(), 0)
+  }
+  const sent = page.locator('.msg.user')
+  await start()
+  await page.waitForTimeout(2300)
+  assert.equal(await sent.count(), 0)
+  assert.equal(await draft.inputValue(), 'Existing draft.')
   await button('Stop dictation').click()
   await button('Dictate message').waitFor()
-  const transcript = await draft.inputValue()
   assert.equal(await page.evaluate(() => window.fixtureTrack.readyState), 'ended')
-  assert.ok(transcript.startsWith('Existing draft. ') && transcript.toLowerCase().includes(expected))
-  assert.equal(await page.locator('.msg.user').count(), 0)
-  await draft.fill('Edited after dictation.')
-  assert.equal(await button('Send').isEnabled(), true)
-  await button('Dictate message').click()
-  await page.getByText('Listening…', { exact: true }).waitFor()
+
+  // Manual stop keeps the transcript editable even after recognition finishes.
+  await start()
+  await page.evaluate(() => window.playFixture())
+  await page.waitForFunction(() => Number(document.querySelector('.voiceButton').style.getPropertyValue('--voice-scale')) > 1,
+    null, { polling: 50 })
+  await page.waitForTimeout(1200)
+  await button('Stop dictation').click()
+  await button('Dictate message').waitFor()
+  assert.equal(await sent.count(), 0)
+  await draft.fill('Edited draft.')
+  await start()
   await button('Close chat').click()
   assert.equal(await page.evaluate(() => window.fixtureTrack.readyState), 'ended')
   await page.getByRole('button', { name: /open invoicity/i }).click()
-  assert.equal(await draft.inputValue(), 'Edited after dictation.')
-  await button('Dictate message').waitFor()
-  console.log('Passed offline microphone, live transcript, stop, editable draft, and chat-close checks:', transcript)
+  assert.equal(await draft.inputValue(), 'Edited draft.')
+
+  await start()
+  await page.evaluate(() => window.playFixture())
+  await sent.first().waitFor({ timeout: 60000 })
+  const transcript = await sent.locator('p').first().innerText()
+  assert.ok(transcript.startsWith('Edited draft. ') && transcript.toLowerCase().includes(expected), transcript)
+  assert.equal(await page.evaluate(() => window.fixtureTrack.readyState), 'ended')
+  await page.locator('.msg.assistant').first().waitFor({ timeout: 120000 })
+  assert.equal(await sent.count(), 1)
+  console.log('Passed silence-only, manual stop, chat close and exactly-once voice submission:', transcript)
 } finally {
   await app.close()
 }
