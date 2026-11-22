@@ -1,3 +1,4 @@
+import { Dictation } from './dictation'
 import { ActionButton } from './action-button'
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -382,6 +383,7 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
   const [name, setName] = useState(initial.name),
     [messages, setMessages] = useState(initial.messages || []),
     [text, setText] = useState(''),
+    [dictating, setDictating] = useState(false),
     [files, setFiles] = useState([]),
     [busy, setBusy] = useState(false),
     [chatOpen, setChatOpen] = useState(true),
@@ -460,7 +462,7 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
     dirty()
   }
   async function ask(prompt = text) {
-    if (busy || !ready || !prompt.trim()) return
+    if (busy || dictating || !ready || !prompt.trim()) return
     setBusy(true)
     const old = record.current.messages
     const user = {
@@ -602,7 +604,7 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
                   <h3>What would you like to work <span className="greetingEnd">on? =)</span></h3>
                   <div className="suggestions">
                     {['Review this invoice', 'Explain the total'].map((p) => (
-                      <button disabled={!ready || !model.installed} key={p} onClick={() => ask(p)}>
+                      <button disabled={!ready || dictating || !model.installed} key={p} onClick={() => ask(p)}>
                         {p}<ArrowUp size={14} aria-hidden="true" />
                       </button>
                     ))}
@@ -699,14 +701,18 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
                   >
                     <Paperclip size={17} />
                   </IconButton>
-                  <IconButton title="Chat context" disabled={busy} onClick={() => setModal('context')}>
+                  <IconButton title="Chat context" disabled={busy || dictating} onClick={() => setModal('context')}>
                     <Database size={17} />
                   </IconButton>
+                  <Dictation disabled={busy} atLimit={text.length >= 2500} onActive={setDictating} notify={notify}
+                    focus={() => messageInput.current?.focus()}
+                    append={words => setText(previous =>
+                      (previous + (previous && !/\s$/.test(previous) ? ' ' : '') + words).slice(0, 2500))} />
                   <button
                     className="send"
                     aria-label="Send"
                     disabled={
-                      busy || !text.trim() || !ready || !model.installed
+                      busy || dictating || !text.trim() || !ready || !model.installed
                     }
                     onClick={() => ask()}
                   >

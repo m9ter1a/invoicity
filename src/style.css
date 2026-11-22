@@ -552,7 +552,26 @@ h1 {
 .composer textarea:focus-visible { outline: none; }
 .composer textarea::placeholder { color: var(--muted); }
 .composer > div { display: flex; align-items: center; gap: 3px; }
-.composer .send { margin-left: auto; }
+.voiceControl { margin-left: auto; display: inline-flex; align-items: center; gap: 7px; margin-right: 5px; }
+.voiceStatus { color: var(--muted); font-size: 11px; line-height: 1.2; }
+.voiceButton {
+  position: relative; isolation: isolate; display: grid; place-items: center;
+  width: 32px; height: 32px; border: 0; border-radius: 50%;
+  color: var(--secondary); background: transparent;
+}
+.voiceButton:hover { background: var(--hover); }
+.voiceButton[aria-pressed="true"] { color: var(--on-primary); background: var(--primary); }
+.voiceButton[data-phase="listening"]::before {
+  content: ''; position: absolute; inset: -2px; border-radius: inherit; pointer-events: none;
+  border: 1px solid var(--muted); opacity: .65;
+  transform: scale(var(--voice-scale, 1)); transition: transform 120ms cubic-bezier(.2,.7,.3,1);
+}
+.voiceButton[data-phase="finishing"] svg { animation: voiceSpin 1s linear infinite; }
+@keyframes voiceSpin { to { transform: rotate(1turn); } }
+@media (prefers-reduced-motion: reduce) {
+  .voiceButton[data-phase="listening"]::before { transform: none; transition: none; }
+  .voiceButton[data-phase="finishing"] svg { animation: none; }
+}
 .send {
   background: var(--primary);
   color: var(--on-primary);
