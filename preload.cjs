@@ -12,6 +12,8 @@ for (const name of [
   'audit',
   'chat',
   'compact',
+  'transcribeVoice',
+  'cancelVoice',
   'trashBook',
   'modelStatus',
   'toggleStar',

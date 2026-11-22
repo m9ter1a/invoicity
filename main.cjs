@@ -2,6 +2,7 @@ const {
   app,
   BrowserWindow,
   nativeTheme,
+  systemPreferences,
   ipcMain,
   dialog,
   Menu,
@@ -25,6 +26,7 @@ const vendor = app.isPackaged
   ? path.join(process.resourcesPath, 'vendor')
   : path.join(__dirname, 'vendor')
 const model = engine(vendor)
+const voice = require('./src/voice-engine.cjs').voiceEngine(vendor)
 const sheetTypes = ['xlsx', 'xls', 'ods', 'xlsb', 'csv', 'tsv']
 let win,
   db,
@@ -44,7 +46,17 @@ else {
       { urls: ['http://*/*', 'https://*/*', 'ws://*/*', 'wss://*/*'] },
       (_, cb) => cb({ cancel: true }),
     )
-    session.defaultSession.setPermissionRequestHandler((_, __, cb) => cb(false))
+    const isEditor = (contents, details) => !!contents && contents === win?.webContents &&
+      details.isMainFrame && details.requestingUrl?.split('#')[0] === contents.getURL().split('#')[0]
+    session.defaultSession.setPermissionCheckHandler((contents, permission, origin, details) =>
+      permission === 'media' && isEditor(contents, details) && details.mediaType === 'audio')
+    session.defaultSession.setPermissionRequestHandler((contents, permission, cb, details) => {
+      const microphone = permission === 'media' && isEditor(contents, details) &&
+        details.mediaTypes?.length === 1 && details.mediaTypes[0] === 'audio'
+      if (microphone && process.platform === 'darwin' && !app.commandLine.hasSwitch('use-fake-device-for-media-stream')) {
+        systemPreferences.askForMediaAccess('microphone').then(cb, () => cb(false))
+      } else cb(Boolean(microphone))
+    })
     win = new BrowserWindow({
       width: 1390,
       height: 880,
@@ -84,7 +96,7 @@ else {
     win.loadFile(path.join(__dirname, 'dist', 'index.html'), landing)
   })
   app.on('window-all-closed', () => app.quit())
-  app.on('will-quit', () => model.stop())
+  app.on('will-quit', () => { voice.cancel(); model.stop() })
 }
 function handle(name, fn) {
   ipcMain.handle(name, (e, ...args) => {
@@ -109,6 +121,8 @@ handle('setAppearance', (theme) => {
   nativeTheme.themeSource = theme
   win.setBackgroundColor(theme === 'dark' ? '#121212' : '#fafafa')
 })
+handle('transcribeVoice', voice.transcribe)
+handle('cancelVoice', (id) => voice.cancel(id))
 handle('list', () => db.list())
 handle('trashBook', id => shell.trashItem(db.file(id)))
 handle('compact', history => model.compact(history))
