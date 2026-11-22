@@ -21,7 +21,7 @@ The finance model uses Metal on Apple Silicon and runs on the CPU on Windows and
 3. Check the resulting cells and expand the change details under the reply. Select a total and ask “Which transactions make up this number?” To try a simple edit in a blank workbook, ask “Write 42 into D2.”
 4. Choose **Export** to save the report. CSV and TSV export the active sheet. The other export formats include the whole workbook.
 
-To dictate a request, click the microphone in the chat. Local speech recognition adds the words to your draft. After two seconds of silence following speech, the app sends the request. Click the recording indicator before then to stop and edit the draft yourself.
+To dictate a request, click the microphone in the chat. Version 0.1.11 detects the language automatically. Builds from the current source also provide a language picker, which defaults to **Auto-detect**. Select **English**, **German**, **Spanish**, or **French** to set the recognition language for each phrase. The app remembers your choice and inserts the original-language transcript into your draft. Local speech recognition adds the words to your draft. After two seconds of silence following speech, the app sends the request. Click the recording indicator before then to stop and edit the draft yourself.
 
 ## Workbooks and attachments
 
@@ -48,7 +48,7 @@ Each workbook has its own chat. Under **Chat context**, you can compress the con
 
 ## Under the hood: the Invoicity quantization
 
-Invoicity ships **Tere Labs’ Q4_K_M GGUF** of NVIDIA Nemotron 3 Nano 4B. Its weights take up **3.15 GB**, down from **7.95 GB** for NVIDIA’s BF16 weights. On 200 held-out Invoicity requests, the local model produced the same spreadsheet operations as BF16 **170 times (85%)**.
+Invoicity ships **Tere Labs’ Q4_K_M GGUF** of NVIDIA Nemotron 3 Nano 4B. Its weights take up **3.15 GB**, down from **7.95 GB** for NVIDIA’s BF16 weights. In Tere Labs’ published evaluation of 200 held-out Invoicity requests, the local model produced the same spreadsheet operations as BF16 **170 times (85%)**.
 
 ![Invoicity quantization benchmark. The weight file is 60.3% smaller than BF16. The chart plots file size against action-plan agreement for four Q4_K_M variants. Full results are in the table below.](invoicity-quantization.png)
 
@@ -60,13 +60,13 @@ Invoicity ships **Tere Labs’ Q4_K_M GGUF** of NVIDIA Nemotron 3 Nano 4B. Its w
 | Bartowski Q4_K_M | 2.98 GB | 82.5% |
 | **Tere Labs Invoicity Q4_K_M** | **3.15 GB** | **85.0%** |
 
-**What counts as a match?** Tere Labs ran the same 200 prompts through each model with llama.cpp b12611, reasoning off, temperature zero, and JSON output. Invoicity’s parser converted each reply into spreadsheet operations. A match means those operations were identical to BF16’s for that prompt. This measures agreement with the reference model. File sizes are decimal GB for the weights alone.
+**What counts as a match?** Tere Labs ran the same 200 prompts through each model with llama.cpp b12611, reasoning off, temperature zero, and JSON output. Invoicity’s parser converted each reply into spreadsheet operations. A match means those operations were identical to BF16’s for that prompt. This measures agreement with the reference model. File sizes are decimal GB for the weights alone. The published model card provides aggregate results. It does not include the prompt set or per-request outputs needed to reproduce the agreement rates.
 
 **How the quant was built.** Tere Labs calibrated an importance matrix on 1,416 chunks of 512 tokens each. About two thirds came from Invoicity prompts, synthetic finance workbooks, and BF16 replies. The rest came from WikiText. The quant keeps Mamba output and attention projections at Q8_0 and uses the Q4_K_M mix elsewhere. It matched BF16 on 25 more requests than NVIDIA’s official Q4_K_M, with similar CPU throughput in the published eight-thread benchmark.
 
-The app pins the model revision and SHA-256 checksum in its [model manifest](src/finance-model.json) and verifies the weights when packaging. The distribution includes the NVIDIA Nemotron Open Model License. NVIDIA lists English as the supported language. Invoicity also accepts Russian prompts, with results varying by task.
+The app pins the model revision and SHA-256 checksum in its [model manifest](src/finance-model.json) and verifies the weights when packaging. The distribution includes the NVIDIA Nemotron Open Model License. NVIDIA lists English as the supported language. Dictation language support is separate from the finance model’s supported language.
 
-[Quantized weights and benchmark methodology](https://huggingface.co/terelabs/Nemotron-3-Nano-4B-Invoicity-GGUF) · [NVIDIA BF16 weights](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16/tree/main)
+[Quantized weights and benchmark methodology](https://huggingface.co/terelabs/Nemotron-3-Nano-4B-Invoicity-GGUF/blob/ea20ae36c4da16810157c128858db0e00cd13362/README.md) · [NVIDIA BF16 weights](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16/tree/main)
 
 ## Vision and dictation models
 
