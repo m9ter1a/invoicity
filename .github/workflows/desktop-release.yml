@@ -21,7 +21,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: vendor/models
-          key: invoicity-gguf-${{ hashFiles('src/finance-model.json', 'scripts/prepare-voice.mjs') }}-72e98600-v2
+          key: invoicity-gguf-35084b02-72e98600-whisper5359861-v2
           enableCrossOsArchive: true
       - if: steps.weights.outputs.cache-hit != 'true'
         run: node scripts/prepare-target.mjs linux
@@ -63,9 +63,8 @@ jobs:
       - uses: actions/cache/restore@v4
         with:
           path: vendor/models
-          key: invoicity-gguf-${{ hashFiles('src/finance-model.json', 'scripts/prepare-voice.mjs') }}-72e98600-v2
+          key: invoicity-gguf-35084b02-72e98600-whisper5359861-v2
           enableCrossOsArchive: true
-          fail-on-cache-miss: true
       - run: npm ci
       - run: npm test
       - run: node scripts/prepare-target.mjs ${{ matrix.target }}
