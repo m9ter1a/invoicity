@@ -29,7 +29,8 @@ async function fetchFile(url, file, sha) {
   await rename(part, file)
 }
 const hf = 'https://huggingface.co/'
-await fetchFile(hf+'nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF/resolve/ba223d14e45525f7fae81db77ea8cabeb2fc6c25/NVIDIA-Nemotron3-Nano-4B-Q4_K_M.gguf', models+'/nemotron.gguf','be5d9a656a51922f24f1f09a759cebb694e1f5d9728bf0ef9f8c972c5a0b5ef2')
+// Tere Labs Q4_K_M of NVIDIA Nemotron 3 Nano 4B, calibrated on Invoicity requests (see README, Model).
+await fetchFile(hf+'terelabs/Nemotron-3-Nano-4B-Invoicity-GGUF/resolve/35084b02a86cf0a0a5e128309bcb3a6e4bae34b2/Nemotron-3-Nano-4B-Invoicity-Q4_K_M.gguf', models+'/nemotron.gguf','168ecf97adc91a3a3c0283e6d43c9168dd9c693500c23f48f67390fa03928645')
 for (const [file,sha] of [
   ['SmolVLM-500M-Instruct-Q8_0.gguf','9d4612de6a42214499e301494a3ecc2be0abdd9de44e663bda63f1152fad1bf4'],
   ['mmproj-SmolVLM-500M-Instruct-Q8_0.gguf','d1eb8b6b23979205fdf63703ed10f788131a3f812c7b1f72e0119d5d81295150'],
