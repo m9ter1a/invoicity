@@ -133,12 +133,7 @@ handle('create', () => {
   return book
 })
 handle('save', (book) => db.save(book))
-handle('toggleStar', (id) => {
-  const book = db.read(id)
-  book.star = !book.star
-  db.save(book)
-  return book.star
-})
+handle('toggleStar', (id) => db.toggleStar(id))
 handle('audit', (snap) => audit(snap))
 handle('modelStatus', () => model.status())
 handle('chat', async ({ view, ...request }) => {
