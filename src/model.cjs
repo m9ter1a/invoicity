@@ -1,3 +1,4 @@
+const finance = require('./finance-model.json')
 const { interpretReply } = require('./write-actions.cjs')
 const { spawn } = require('node:child_process')
 const fs = require('node:fs')
@@ -150,7 +151,7 @@ function recentHistory(history) {
   return recent
 }
 function engine(vendor) {
-  const textModel = localServer(vendor, 'nemotron.gguf', 'invoicity', [])
+  const textModel = localServer(vendor, finance.file, 'invoicity', [])
   const vision = localServer(vendor, 'SmolVLM-500M-Instruct-Q8_0.gguf', 'sheet-vision',
     ['--mmproj', path.join(vendor, 'models', 'mmproj-SmolVLM-500M-Instruct-Q8_0.gguf')])
   async function compact(history) {
@@ -282,7 +283,7 @@ function engine(vendor) {
     status: () => ({
       installed: textModel.installed() && vision.installed(),
       active: textModel.active(),
-      model: 'Nemotron 3 Nano 4B',
+      model: finance.name,
       quant: 'Q4_K_M',
     }),
   }
