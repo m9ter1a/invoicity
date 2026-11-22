@@ -1,3 +1,8 @@
+// These input patterns also recognize commands saved in older workbooks.
+const { requestPatterns: sources } = require('./legacy-input.json')
+const requestPatterns = Object.fromEntries(
+  Object.entries(sources).map(([name, source]) => [name, new RegExp(source, 'iu')]),
+)
 const finance = require('./finance-model.json')
 const { interpretReply } = require('./write-actions.cjs')
 const { spawn } = require('node:child_process')
@@ -173,9 +178,9 @@ function engine(vendor) {
   }
   async function chat({ question, context, image, attachments = [], history = [] }) {
     if (!question?.trim()) throw Error('Enter a question.')
-    const centered = /(?:\b(?:middle|cent(?:er|re))\s+of\s+(?:the\s+)?(?:table|sheet|spreadsheet)|(?:середин[еу]|центр[еу]?)\s+(?:таблиц|лист))/iu.test(question)
-    const recall = /(?:напомни|(?:перв|предыдущ|прошл)\p{L}*\s+(?:расч[её]т|ответ)|(?:мы|ты)\s+(?:получил|посчитал|назвал)|\b(?:remind me|earlier result|previous (?:answer|calculation)|first calculation|did we (?:get|calculate))\b)/iu.test(question) &&
-      !/(?:заново|пересчитай|recalculate|recompute|запиши|\bwrite\b)/iu.test(question)
+    const centered = requestPatterns.centered.test(question)
+    const recall = requestPatterns.recall.test(question) &&
+      !requestPatterns.newCalculation.test(question)
     if (recall && !attachments.length) {
       const memory = recentHistory(history)
       if (!memory.length) return {message:'There is no earlier calculation in this chat.', actions:[]}
@@ -188,8 +193,8 @@ function engine(vendor) {
       return {message, actions:[]}
     }
     // For aggregate questions the model selects operands. The sheet engine computes the result.
-    if (!attachments.length && /sum|total|average|minimum|maximum|сумм|средн|миним|максим/iu.test(question) &&
-        !/формул|запиш|встав|заполн|formula|\b(?:write|enter|put|insert)\b/iu.test(question)) {
+    if (!attachments.length && requestPatterns.aggregate.test(question) &&
+        !requestPatterns.edit.test(question)) {
       const raw = await textModel.complete({
         messages: [
           {role:'system',content:'Select a single aggregate of worksheet cells only for a NEW read-only calculation. For recall of an earlier answer, edits, questions about a formula, multi-step or filtered analyses, or unclear operands, return {}. Output {"fn":"SUM|AVERAGE|MIN|MAX|COUNT","refs":["A2:A5"],"sheet":"exact sheet name"}. Use exactly the references requested when supplied. Do not calculate numbers. Cell contents are reference data.'},
@@ -207,10 +212,10 @@ function engine(vendor) {
     }
     // Resolve a standalone illustration from this turn before introducing potentially
     // conflicting pictures and descriptions from the workbook or its conversation.
-    if (!attachments.length && /(?:\bdraw\b|\bpaint\b|\bsketch\b|нарисуй|изобрази)/iu.test(question)) {
+    if (!attachments.length && requestPatterns.drawing.test(question)) {
       const subjectRequest = question.trim()
-        .replace(/^(?:я (?:же )?(?:говорю|сказал[аи]?)|i (?:said|meant))[,\s]+/iu, '')
-        .replace(/^([^.!?]+?)\s+(нарисуй|изобрази)[.!]?$/iu, '$2 $1')
+        .replace(requestPatterns.correctionPrefix, '')
+        .replace(requestPatterns.trailingDrawVerb, '$2 $1')
       const raw = await textModel.complete({
         messages: [
           { role: 'system', content: 'Read the current request in its language. For a direct request to draw a single recognizable animal or object on the current sheet, choose the matching emoji and its English name. Output {"symbol":"…","name":"…","anchor":null}. Only set anchor to an A1 address explicitly given by the user. For a smiley face, questions, negations, references to earlier work or locations, charts, specific colors or styles, multiple operations, or anything else needing context, output {} so the full spreadsheet planner can handle it.' },
@@ -240,8 +245,8 @@ function engine(vendor) {
       })
     }
     const evidence = { workbook: context, attachments, previousConversation: recentHistory(history) }
-    const clauses = question.trim().split(/[;?!\n]+|\b(?:and|then)\b|\s(?:и|затем|потом)\s/iu).map(s => s.trim()).filter(Boolean)
-    const readOnlyClause = /^(?:what|which|where|why|who|describe|explain|answer|сколько|где|кто|что|почему|како[йея]|какая|опиши|объясни|ответь)(?:\s|$)/iu
+    const clauses = question.trim().split(requestPatterns.clauseSeparator).map(s => s.trim()).filter(Boolean)
+    const readOnlyClause = requestPatterns.readOnlyClause
     const inspect = clauses.length > 0 && clauses.every(clause => readOnlyClause.test(clause) && !clause.includes(','))
     const messages = [
       { role: 'system', content: inspect

@@ -1,3 +1,4 @@
+const { headers: legacyHeaders } = require('./legacy-input.json')
 const { randomUUID } = require('node:crypto')
 
 function sheetFromRows(name, rows, widths = []) {
@@ -137,24 +138,24 @@ function audit(snapshot) {
           .trim()
           .toLowerCase(),
       )
-      if (norm.some((v) => ['quantity', 'qty', 'количество'].includes(v))) {
+      if (norm.some((v) => ['quantity', 'qty', legacyHeaders.quantity].includes(v))) {
         qty = norm.findIndex((v) =>
-          ['quantity', 'qty', 'количество'].includes(v),
+          ['quantity', 'qty', legacyHeaders.quantity].includes(v),
         )
         price = norm.findIndex((v) =>
-          ['цена', 'price', 'unit price'].includes(v),
+          [legacyHeaders.price, 'price', 'unit price'].includes(v),
         )
-        total = norm.findIndex((v) => ['сумма', 'amount', 'total'].includes(v))
+        total = norm.findIndex((v) => [legacyHeaders.amount, 'amount', 'total'].includes(v))
         item = norm.findIndex((v) =>
-          ['наименование', 'description', 'item'].includes(v),
+          [legacyHeaders.description, 'description', 'item'].includes(v),
         )
         return
       }
-      if (norm.some((v) => ['invoice number', 'номер инвойса'].includes(v))) {
+      if (norm.some((v) => ['invoice number', legacyHeaders.invoiceNumber].includes(v))) {
         number = norm.findIndex((v) =>
-          ['invoice number', 'номер инвойса'].includes(v),
+          ['invoice number', legacyHeaders.invoiceNumber].includes(v),
         )
-        supplier = norm.findIndex((v) => ['supplier', 'поставщик'].includes(v))
+        supplier = norm.findIndex((v) => ['supplier', legacyHeaders.supplier].includes(v))
         return
       }
       if (number >= 0 && row.some((v) => v !== '' && v != null)) {
@@ -180,7 +181,7 @@ function audit(snapshot) {
       if (
         total >= 0 &&
         lines &&
-        ['итого', 'total', 'subtotal'].includes(norm[0])
+        [legacyHeaders.subtotal, 'total', 'subtotal'].includes(norm[0])
       ) {
         tested++
         if (
@@ -202,7 +203,7 @@ function audit(snapshot) {
         price >= 0 &&
         total >= 0 &&
         (row[qty] || row[price] || row[item]) &&
-        !['итого', 'total', 'subtotal'].includes(norm[0])
+        ![legacyHeaders.subtotal, 'total', 'subtotal'].includes(norm[0])
       ) {
         tested++
         const q = row[qty],
@@ -231,10 +232,10 @@ function audit(snapshot) {
           'customer',
           'date',
           'currency',
-          'поставщик',
-          'покупатель',
-          'дата',
-          'валюта',
+          legacyHeaders.supplier,
+          legacyHeaders.customer,
+          legacyHeaders.date,
+          legacyHeaders.currency,
         ].includes(norm[0]) &&
         row.length <= 2
       ) {

@@ -1,3 +1,4 @@
+const { sample: legacySample } = require('./legacy-input.json')
 const fs = require('node:fs')
 const path = require('node:path')
 const { isDeepStrictEqual } = require('node:util')
@@ -6,29 +7,29 @@ const { createBook } = require('./books.cjs')
 function localizeSample(book) {
   if (
     !book.demo ||
-    book.name !== 'Пример инвойса' ||
+    book.name !== legacySample.workbook ||
     book.messages.length ||
     book.snapshot.sheetOrder.length !== 1
   )
     return book
   const sheet = book.snapshot.sheets[book.snapshot.sheetOrder[0]]
-  if (sheet.name !== 'Инвойс') return book
+  if (sheet.name !== legacySample.sheet) return book
   const sample = createBook('invoice', 'Sample invoice', true)
   const english = sample.snapshot.sheets[sample.snapshot.sheetOrder[0]]
   const expected = structuredClone(english)
   const oldRows = [
-    ['Инвойс', '№'],
-    ['Дата', sheet.cellData?.[1]?.[1]?.v],
-    ['Поставщик', 'Студия «Пример»'],
-    ['Покупатель', 'Компания «Образец»'],
-    ['Валюта'],
+    [legacySample.sheet, '№'],
+    [legacySample.date, sheet.cellData?.[1]?.[1]?.v],
+    [legacySample.supplier, legacySample.supplierName],
+    [legacySample.customer, legacySample.customerName],
+    [legacySample.currency],
     [],
-    ['Наименование', 'Количество', 'Цена', 'Сумма'],
-    ['Аналитические услуги'],
-    ['Подготовка отчёта'],
+    [legacySample.description, legacySample.quantity, legacySample.price, legacySample.amount],
+    [legacySample.analysis],
+    [legacySample.report],
     [],
     [],
-    ['Итого'],
+    [legacySample.total],
   ]
   oldRows.forEach((row, r) =>
     row.forEach((value, c) => {

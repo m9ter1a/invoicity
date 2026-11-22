@@ -553,6 +553,11 @@ h1 {
 .composer textarea::placeholder { color: var(--muted); }
 .composer > div { display: flex; align-items: center; gap: 3px; }
 .voiceControl { margin-left: auto; display: inline-flex; align-items: center; gap: 7px; margin-right: 5px; }
+.dictationLanguage {
+  width: auto; max-width: 7em; height: 32px; padding: 0 2px;
+  background: transparent; color: var(--secondary); border: 0;
+  font: inherit; font-size: 12px; cursor: pointer;
+}
 .voiceStatus { color: var(--muted); font-size: 11px; line-height: 1.2; }
 .voiceButton {
   position: relative; isolation: isolate; display: grid; place-items: center;

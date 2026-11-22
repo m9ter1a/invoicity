@@ -1,3 +1,4 @@
+const languages = require('./dictation-languages.json')
 const path = require('node:path')
 const { execFile } = require('node:child_process')
 
@@ -28,13 +29,14 @@ function voiceEngine(vendor) {
       active = null
     }
   }
-  async function transcribe(id, pcm) {
+  async function transcribe(id, pcm, language = 'auto') {
     if (active || typeof id !== 'string' || id.length > 64) throw Error('Dictation is busy.')
+    if (typeof language !== 'string' || !Object.hasOwn(languages, language)) throw Error('Unsupported dictation language.')
     const bytes = wave(pcm)
     const cli = path.join(vendor, 'voice-' + process.platform, process.platform === 'win32' ? 'whisper-cli.exe' : 'whisper-cli')
     const model = path.join(vendor, 'models', 'whisper-base-q5_1.bin')
     // A named output stem enables segment printing when reading stdin. No output file formats are enabled.
-    const args = ['-m', model, '-l', 'auto', '-nt', '-np', '-t', '4', '-of', 'transcript', '-f', '-']
+    const args = ['-m', model, '-l', language, '-nt', '-np', '-t', '4', '-of', 'transcript', '-f', '-']
     return new Promise((resolve, reject) => {
       const child = execFile(cli, args, { timeout: 90000, windowsHide: true }, (err, stdout) => {
         if (active?.child === child) active = null

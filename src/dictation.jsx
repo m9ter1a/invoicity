@@ -1,6 +1,9 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Mic, Square, LoaderCircle } from 'lucide-react'
 
+import languages from './dictation-languages.json'
+
+const languageKey = 'invoicity.dictationLanguage'
 const rate = 16000
 function release(session) {
   session.stream?.getTracks().forEach(track => track.stop())
@@ -10,6 +13,10 @@ function release(session) {
 }
 
 export function Dictation({ disabled, atLimit, onState, append, notify, focus }) {
+  const [language, setLanguage] = useState(() => {
+    const saved = localStorage.getItem(languageKey)
+    return Object.hasOwn(languages, saved) ? saved : 'auto'
+  })
   const current = useRef(null)
   const orb = useRef(null)
   const [phase, setPhase] = useState('idle')
@@ -44,7 +51,7 @@ export function Dictation({ disabled, atLimit, onState, append, notify, focus })
       session.pending++
       session.queue = session.queue.then(async () => {
         if (current.current !== session) return
-        const text = await window.localDesk.transcribeVoice(session.id, pcm.buffer)
+        const text = await window.localDesk.transcribeVoice(session.id, pcm.buffer, session.language)
         if (current.current === session && text) {
           session.transcribed = true
           append(text)
@@ -71,7 +78,7 @@ export function Dictation({ disabled, atLimit, onState, append, notify, focus })
   }
   async function start() {
     if (disabled || atLimit || current.current) return
-    const session = { id: crypto.randomUUID(), frames: [], length: 0, voiced: 0, quiet: 0,
+    const session = { id: crypto.randomUUID(), language, frames: [], length: 0, voiced: 0, quiet: 0,
       heardSpeech: false, pending: 0, queue: Promise.resolve(), stopping: false }
     current.current = session
     setPhase('starting')
@@ -133,6 +140,13 @@ export function Dictation({ disabled, atLimit, onState, append, notify, focus })
   const status = { starting: 'Opening microphone…', finishing: 'Transcribing…' }[phase]
   const label = active ? 'Stop dictation' : 'Dictate message'
   return <span className="voiceControl">
+    {!active && <select className="dictationLanguage" aria-label="Dictation language" title="Dictation language"
+      disabled={disabled} value={language} onChange={event => {
+        setLanguage(event.target.value)
+        localStorage.setItem(languageKey, event.target.value)
+      }}>
+      {Object.entries(languages).map(([code, name]) => <option key={code} value={code}>{name}</option>)}
+    </select>}
     {status && <span className="voiceStatus" role="status">{status}</span>}
     <button ref={orb} type="button" className="voiceButton" data-phase={phase}
       aria-label={label} title={label} aria-pressed={active} disabled={phase === 'finishing' || (!active && (disabled || atLimit))}
