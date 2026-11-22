@@ -21,7 +21,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: vendor/models
-          key: invoicity-gguf-35084b02-72e98600-v1
+          key: invoicity-gguf-${{ hashFiles('src/finance-model.json', 'scripts/prepare-voice.mjs') }}-72e98600-v2
           enableCrossOsArchive: true
       - if: steps.weights.outputs.cache-hit != 'true'
         run: node scripts/prepare-target.mjs linux
@@ -34,7 +34,7 @@ jobs:
             test "$(gh release view "$tag" --json isDraft --jq .isDraft)" = true
             gh release edit "$tag" --target "$GITHUB_SHA"
           else
-            gh release create "$tag" --draft --target "$GITHUB_SHA" --title "Invoicity $tag" --notes "Offline desktop builds. Download both parts for your platform and its SHA-256 file. Join the parts as described in the README before opening the archive or installing the Debian package."
+            gh release create "$tag" --draft --target "$GITHUB_SHA" --title "Invoicity $tag" --notes "Offline desktop builds. Download all numbered parts for your platform and its SHA-256 file. Join the parts as described in the README before opening the archive or installing the Debian package."
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
   build:
@@ -63,7 +63,7 @@ jobs:
       - uses: actions/cache/restore@v4
         with:
           path: vendor/models
-          key: invoicity-gguf-35084b02-72e98600-v1
+          key: invoicity-gguf-${{ hashFiles('src/finance-model.json', 'scripts/prepare-voice.mjs') }}-72e98600-v2
           enableCrossOsArchive: true
           fail-on-cache-miss: true
       - run: npm ci
