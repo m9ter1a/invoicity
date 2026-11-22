@@ -14,6 +14,10 @@ import {
 import { execFileSync } from 'node:child_process'
 import os from 'node:os'
 import path from 'node:path'
+import { createHash } from 'node:crypto'
+import { createReadStream } from 'node:fs'
+import finance from '../src/finance-model.json' with { type: 'json' }
+
 const platform = process.argv[2] || process.platform
 if (!['darwin','linux','win32'].includes(platform)) throw Error('Unsupported platform: ' + platform)
 const arch = platform === 'darwin' ? 'arm64' : 'x64'
@@ -120,7 +124,10 @@ await cp(nativeDir, path.join(vendor,'llama'), {
 await cp('vendor/voice-' + platform, path.join(vendor, 'voice-' + platform), { recursive: true })
 await copyFile('vendor/models/whisper-base-q5_1.bin', path.join(vendor, 'models/whisper-base-q5_1.bin'))
 if (platform === 'darwin') await copyFile('vendor/extract', path.join(vendor,'extract'))
-for (const file of ['nemotron.gguf','NVIDIA-License.pdf','SmolVLM-500M-Instruct-Q8_0.gguf','mmproj-SmolVLM-500M-Instruct-Q8_0.gguf','SmolVLM-LICENSE.txt'])
+for (const file of [finance.file,'NVIDIA-License.pdf','SmolVLM-500M-Instruct-Q8_0.gguf','mmproj-SmolVLM-500M-Instruct-Q8_0.gguf','SmolVLM-LICENSE.txt'])
   await copyFile(path.join('vendor/models',file), path.join(vendor,'models',file))
+const modelDigest = createHash('sha256')
+for await (const chunk of createReadStream(path.join(vendor, 'models', finance.file))) modelDigest.update(chunk)
+if (modelDigest.digest('hex') !== finance.sha256) throw Error('Bundled Tere Labs model failed SHA-256 verification')
 if (platform === 'darwin') execFileSync('codesign',['--force','--deep','--sign','-',app],{stdio:'inherit'})
 console.log(app)

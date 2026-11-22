@@ -4,6 +4,8 @@ import { createReadStream, existsSync } from 'node:fs'
 import { mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
+import finance from '../src/finance-model.json' with { type: 'json' }
+
 const platform = process.argv[2] || process.platform
 const runtime = {
   darwin: ['macos-arm64.tar.gz', '4b9067216c4f06961c3d13426bfa045d7ce68ca3237d3c77a87f575d88482fee'],
@@ -29,7 +31,7 @@ async function fetchFile(url, file, sha) {
   await rename(part, file)
 }
 const hf = 'https://huggingface.co/'
-await fetchFile(hf+'nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF/resolve/ba223d14e45525f7fae81db77ea8cabeb2fc6c25/NVIDIA-Nemotron3-Nano-4B-Q4_K_M.gguf', models+'/nemotron.gguf','be5d9a656a51922f24f1f09a759cebb694e1f5d9728bf0ef9f8c972c5a0b5ef2')
+await fetchFile(hf + finance.repository + '/resolve/' + finance.revision + '/' + finance.file, path.join(models, finance.file), finance.sha256)
 for (const [file,sha] of [
   ['SmolVLM-500M-Instruct-Q8_0.gguf','9d4612de6a42214499e301494a3ecc2be0abdd9de44e663bda63f1152fad1bf4'],
   ['mmproj-SmolVLM-500M-Instruct-Q8_0.gguf','d1eb8b6b23979205fdf63703ed10f788131a3f812c7b1f72e0119d5d81295150'],
