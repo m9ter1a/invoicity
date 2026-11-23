@@ -52,7 +52,7 @@ if platform == 'darwin':
     subprocess.run([
         'pkgbuild', '--component', str(bundle / 'Invoicity.app'),
         '--install-location', '/Applications', '--identifier', 'app.invoicity.desktop',
-        '--version', version, '--large-payload', str(target),
+        '--version', version, '--min-os-version', '13.0', '--large-payload', str(target),
     ], check=True)
 elif platform == 'win32':
     with zipfile.ZipFile(target, 'w', zipfile.ZIP_DEFLATED, compresslevel=1) as archive:
