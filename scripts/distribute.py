@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import subprocess
 import tarfile
 import tempfile
 import zipfile
@@ -20,7 +21,7 @@ arch = 'arm64' if platform == 'darwin' else 'x64'
 bundle = Path('release') / f'Invoicity-{platform}-{arch}'
 out = Path('release') / 'downloads'
 out.mkdir(parents=True, exist_ok=True)
-name = {'darwin': f'Invoicity-{version}-macOS-arm64.tar.gz',
+name = {'darwin': f'Invoicity-{version}-macOS-arm64.pkg',
         'linux': f'invoicity_{version}_amd64.deb',
         'win32': f'Invoicity-{version}-Windows-x64.zip'}[platform]
 target = out / name
@@ -48,8 +49,11 @@ def ar_member(archive, file):
         archive.write(b'\n')
 
 if platform == 'darwin':
-    with tarfile.open(target, 'w:gz', compresslevel=1) as tar:
-        tar.add(bundle / 'Invoicity.app', 'Invoicity.app')
+    subprocess.run([
+        'pkgbuild', '--component', str(bundle / 'Invoicity.app'),
+        '--install-location', '/Applications', '--identifier', 'app.invoicity.desktop',
+        '--version', version, '--large-payload', str(target),
+    ], check=True)
 elif platform == 'win32':
     with zipfile.ZipFile(target, 'w', zipfile.ZIP_DEFLATED, compresslevel=1) as archive:
         for file in sorted(bundle.rglob('*')):
