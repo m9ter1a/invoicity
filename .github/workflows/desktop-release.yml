@@ -34,7 +34,7 @@ jobs:
             test "$(gh release view "$tag" --json isDraft --jq .isDraft)" = true
             gh release edit "$tag" --target "$GITHUB_SHA"
           else
-            gh release create "$tag" --draft --target "$GITHUB_SHA" --title "Invoicity $tag" --notes "Offline desktop builds. Download all numbered parts for your platform and its SHA-256 file. Join the parts as described in the README before opening the archive or installing the Debian package."
+            gh release create "$tag" --draft --target "$GITHUB_SHA" --title "Invoicity $tag" --notes "This release adds a local dictation language picker for English, German, Spanish and French alongside automatic detection. For a single installer or archive, visit https://invoicity.org/. For the assets below, join the numbered parts and verify the SHA-256 checksum as described in the README."
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
   build:
@@ -83,7 +83,7 @@ jobs:
           python scripts/distribute.py ${{ matrix.target }} --split
           case "$RUNNER_OS" in
             Linux) dpkg-deb --info release/downloads/*.deb && dpkg-deb --contents release/downloads/*.deb > /dev/null ;;
-            macOS) codesign --verify --deep --strict release/Invoicity-darwin-arm64/Invoicity.app && tar -tzf release/downloads/*.tar.gz > /dev/null ;;
+            macOS) codesign --verify --deep --strict release/Invoicity-darwin-arm64/Invoicity.app && pkgutil --payload-files release/downloads/*.pkg > /dev/null ;;
             Windows) 7z t release/downloads/*.zip ;;
           esac
       - name: Upload distribution to private draft
