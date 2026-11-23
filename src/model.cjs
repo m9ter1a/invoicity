@@ -91,7 +91,9 @@ function localServer(vendor, filename, alias, options) {
         ready = null
       }
     })
-    for (let i = 0; i < 240; i++) {
+    // Cold starts can take several minutes on memory-constrained machines.
+    const deadline = Date.now() + 240_000
+    while (Date.now() < deadline) {
       if (stopping || failure || proc.exitCode !== null || proc.signalCode)
         throw Error('The local model engine could not start.')
       try {
