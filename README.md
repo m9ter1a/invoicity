@@ -8,9 +8,9 @@ Invoicity is a free, local AI finance assistant for spreadsheets. Give it a tran
 
 | Platform | How to install |
 | --- | --- |
-| macOS on Apple Silicon | Extract the `.tar.gz` archive and open `Invoicity.app`. The app has an ad hoc signature. |
+| macOS on Apple Silicon | Open the `.pkg` installer, then launch Invoicity from Applications. The app has an ad hoc signature. |
 | Windows x64 | Extract the entire ZIP archive, then open `Invoicity.exe` inside the extracted folder. |
-| Ubuntu 24.04 x64 | In the download directory, run `sudo apt install ./invoicity_0.1.11_amd64.deb`, then open Invoicity from the applications menu. Adjust the filename for other versions. |
+| Ubuntu 24.04 x64 | In the download directory, run `sudo apt install ./invoicity_0.1.12_amd64.deb`, then open Invoicity from the applications menu. Adjust the filename for other versions. |
 
 The finance model uses Metal on Apple Silicon and runs on the CPU on Windows and Linux. The team selected it for machines with 16 GB of memory. The 0.1 builds are intended for internal testing.
 
@@ -21,7 +21,7 @@ The finance model uses Metal on Apple Silicon and runs on the CPU on Windows and
 3. Check the resulting cells and expand the change details under the reply. Select a total and ask “Which transactions make up this number?” To try a simple edit in a blank workbook, ask “Write 42 into D2.”
 4. Choose **Export** to save the report. CSV and TSV export the active sheet. The other export formats include the whole workbook.
 
-To dictate a request, click the microphone in the chat. Version 0.1.11 detects the language automatically. Builds from the current source also provide a language picker, which defaults to **Auto-detect**. Select **English**, **German**, **Spanish**, or **French** to set the recognition language for each phrase. The app remembers your choice and inserts the original-language transcript into your draft. Local speech recognition adds the words to your draft. After two seconds of silence following speech, the app sends the request. Click the recording indicator before then to stop and edit the draft yourself.
+To dictate a request, click the microphone in the chat. The language picker defaults to **Auto-detect**. Select **English**, **German**, **Spanish**, or **French** to set the recognition language for each phrase. The app remembers your choice and inserts the original-language transcript into your draft. Local speech recognition adds the words to your draft. After two seconds of silence following speech, the app sends the request. Click the recording indicator before then to stop and edit the draft yourself.
 
 ## Workbooks and attachments
 

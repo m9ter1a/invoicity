@@ -2,7 +2,7 @@
   "name": "invoicity",
   "productName": "Invoicity",
   "private": true,
-  "version": "0.1.11",
+  "version": "0.1.12",
   "main": "main.cjs",
   "scripts": {
     "build": "node scripts/build.mjs",
