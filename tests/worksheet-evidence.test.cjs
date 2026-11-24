@@ -42,3 +42,12 @@ test('routes grounded reads through the ordinary chat entry point without loadin
     assert.deepEqual(await agent.chat({question,context:{active:'Ledger',focused}}),{message:focused.answer,actions:[]})
   }
 })
+
+test('keeps all listed operands when a finance question also names a metric and entity',()=>{
+  const {explicitCalculation} = require('../src/explicit-calculation.cjs')
+  const total = explicitCalculation('What is the total monthly revenue for the North store across weekly totals G2, M2, S2 and Y2? Answer in the chat.', 'Ledger')
+  assert.equal(total.calculation.formula,'=SUM(G2,M2,S2,Y2)')
+  const avg = explicitCalculation('Write a formula in Z2 for the average weekly revenue for North using cells G2, M2, S2 and Y2. The cell should show the calculated result.', 'Ledger')
+  assert.deepEqual(avg.actions[0],{op:'write',sheet:'Ledger',range:'Z2',values:[['=AVERAGE(G2,M2,S2,Y2)']]})
+  assert.equal(explicitCalculation('What is the total revenue for North excluding refunds using cells A1, A2?', 'Ledger'),null)
+})
