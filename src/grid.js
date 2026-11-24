@@ -119,7 +119,11 @@ export function context(grid) {
   const snap = grid.snapshot(),
     active = grid.book.getActiveSheet(),
     selection = grid.book.getActiveRange()?.getA1Notation() || 'A1'
+  const activeData = snap.sheets[active.getSheetId()]
+  const activeSheetOccupied = Object.values(activeData.cellData || {}).some(row => Object.keys(row).length > 0) ||
+    Boolean(activeData.mergeData?.length)
   const result = {
+    activeSheetOccupied,
     workbookName: snap.name,
     active: active.getSheetName(),
     selection,

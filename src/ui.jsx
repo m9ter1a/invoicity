@@ -394,6 +394,11 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
     [activity, setActivity] = useState(null),
     [ready, setReady] = useState(false),
     [failed, setFailed] = useState('')
+  const lastTurn = messages.at(-1)
+  const failedTurn = lastTurn?.role === 'assistant' && (lastTurn.state === 'failed' ||
+    ['Unsupported assistant action.', 'Request stopped.'].includes(lastTurn.text))
+  const retryIndex = lastTurn?.role === 'user' ? messages.length - 1 : failedTurn ? messages.length - 2 : -1
+  const retryUser = retryIndex >= 0 && messages[retryIndex]?.role === 'user' ? messages[retryIndex] : null
   const dictating = dictationState === 'recording'
   const { width, divider } = useChatWidth()
   const messageInput = useRef(null)
@@ -469,8 +474,8 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
     setBusy(true)
     const request = {id: crypto.randomUUID(), stopped: false}
     activeRequest.current = request
-    const old = retry ? record.current.messages.slice(0, -1) : record.current.messages
-    const user = retry ? record.current.messages.at(-1) : {
+    const old = retry ? record.current.messages.slice(0, retryIndex) : record.current.messages
+    const user = retry ? retryUser : {
       role: 'user',
       text: prompt.trim(),
       files: files.map((x) => x.name),
@@ -530,7 +535,7 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
     } catch (e) {
       if (live.current) {
         setActivity(null)
-        setHistory([...old, user, { role: 'assistant', text: request.stopped ? 'Request stopped.' : cleanError(e) }])
+        setHistory([...old, user, { role: 'assistant', state: 'failed', text: request.stopped ? 'Request stopped.' : cleanError(e) }])
         setText(user.text)
         setFiles(user.sources || [])
       }
@@ -662,11 +667,11 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
                   )}
                 </div>
               ))}
-              {!busy && messages.at(-1)?.role === 'user' && (
+              {!busy && retryUser && !text && !files.length && (
                 <div className="interruptedRequest">
-                  <span>The last request was interrupted.</span>
-                  <ActionButton disabled={!ready || dictating || !!text || files.length > 0}
-                    onClick={() => ask(messages.at(-1).text, true)}>Retry request</ActionButton>
+                  {!failedTurn && <span>The last request was interrupted.</span>}
+                  <ActionButton disabled={!ready || dictating}
+                    onClick={() => ask(retryUser.text, true)}>Retry request</ActionButton>
                 </div>
               )}
               {busy && (
@@ -698,7 +703,11 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
                   maxLength={2500}
                   value={text}
                   onChange={(e) => setText(e.target.value)}
+                  onPaste={(e) => e.stopPropagation()}
+                  onCut={(e) => e.stopPropagation()}
+                  onCopy={(e) => e.stopPropagation()}
                   onKeyDown={(e) => {
+                    e.stopPropagation()
                     if (
                       e.key === 'Enter' &&
                       !e.shiftKey &&
@@ -716,7 +725,10 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
                     onClick={async () => {
                       try {
                         const f = await api.attachment()
-                        if (f) setFiles((prev) => [...prev, f].slice(0, 2))
+                        if (f) {
+                          setFiles((prev) => [...prev, f].slice(0, 2))
+                          messageInput.current?.focus({preventScroll: true})
+                        }
                       } catch (e) {
                         notify(e)
                       }
