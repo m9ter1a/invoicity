@@ -1,3 +1,4 @@
+import reportAnalysis from './report-analysis.cjs'
 import {
   createUniver,
   defaultTheme,
@@ -115,7 +116,7 @@ function visibleColors(sheet) {
   }).join(''))
   return { origin: col(startColumn) + (startRow + 1), legend, rows }
 }
-export function context(grid) {
+export function context(grid, history = []) {
   const snap = grid.snapshot(),
     active = grid.book.getActiveSheet(),
     selection = grid.book.getActiveRange()?.getA1Notation() || 'A1'
@@ -124,6 +125,7 @@ export function context(grid) {
     Boolean(activeData.mergeData?.length)
   const result = {
     activeSheetOccupied,
+    weeklyReport: reportAnalysis.currentReport(activeData, history),
     workbookName: snap.name,
     active: active.getSheetName(),
     selection,

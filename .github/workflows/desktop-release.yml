@@ -34,7 +34,7 @@ jobs:
             test "$(gh release view "$tag" --json isDraft --jq .isDraft)" = true
             gh release edit "$tag" --target "$GITHUB_SHA"
           else
-            gh release create "$tag" --draft --target "$GITHUB_SHA" --title "Invoicity $tag" --notes "This release adds a local dictation language picker for English, German, Spanish and French alongside automatic detection. For a single installer or archive, visit https://invoicity.org/. For the assets below, join the numbered parts and verify the SHA-256 checksum as described in the README."
+            gh release create "$tag" --draft --target "$GITHUB_SHA" --title "Invoicity $tag" --notes "This release restores interrupted PDF requests, protects existing worksheet data and improves weekly revenue comparisons, formula accuracy and cross-platform PDF text extraction. For a single installer or archive, visit https://invoicity.org/. For the assets below, join the numbered parts and verify the SHA-256 checksum as described in the README."
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
   build:

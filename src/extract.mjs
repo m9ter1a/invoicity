@@ -22,7 +22,7 @@ window.extractAttachment = async (encoded, extension) => {
     for (let i = 1; i <= Math.min(pdf.numPages, 30); i++) {
       const page = await pdf.getPage(i)
       const content = await page.getTextContent()
-      let text = content.items.map(item => item.str || '').join(' ').trim()
+      let text = content.items.map(item => (item.str || '') + (item.hasEOL ? '\n' : ' ')).join('').trim()
       if (!text) {
         const size = page.getViewport({scale: 1})
         const viewport = page.getViewport({scale: Math.min(3, 2200 / Math.max(size.width, size.height))})

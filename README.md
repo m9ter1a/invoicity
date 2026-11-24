@@ -10,14 +10,14 @@ Invoicity is a free, local AI finance assistant for spreadsheets. Give it a tran
 | --- | --- |
 | macOS on Apple Silicon | Open the `.pkg` installer, then launch Invoicity from Applications. The app has an ad hoc signature. |
 | Windows x64 | Extract the entire ZIP archive, then open `Invoicity.exe` inside the extracted folder. |
-| Ubuntu 24.04 x64 | In the download directory, run `sudo apt install ./invoicity_0.1.12_amd64.deb`, then open Invoicity from the applications menu. Adjust the filename for other versions. |
+| Ubuntu 24.04 x64 | In the download directory, run `sudo apt install ./invoicity_0.1.13_amd64.deb`, then open Invoicity from the applications menu. Adjust the filename for other versions. |
 
 The finance model uses Metal on Apple Silicon and runs on the CPU on Windows and Linux. The team selected it for machines with 16 GB of memory. The 0.1 builds are intended for internal testing.
 
 ## Try a revenue report
 
 1. Choose **Get started**, then **New spreadsheet**. To work with an existing workbook, choose **Import a file**. The optional first-run tour shows where to create, import, search, and bookmark workbooks.
-2. Attach a small PDF that lists transaction dates, regions, and amounts. In **Invoicity Agent**, type “Build a table of weekly revenue by region from this PDF. Add a total for each week.”
+2. Attach a small PDF that lists transaction dates, regions, and amounts. In **Invoicity Agent**, type “Turn this PDF into a weekly revenue table with one column per region.”
 3. Check the resulting cells and expand the change details under the reply. Select a total and ask “Which transactions make up this number?” To try a simple edit in a blank workbook, ask “Write 42 into D2.”
 4. Choose **Export** to save the report. CSV and TSV export the active sheet. The other export formats include the whole workbook.
 
@@ -42,7 +42,7 @@ The app extracts embedded PDF text directly. For scanned documents and images, i
 
 Workbooks and chat histories are saved in the `books` folder inside Electron’s per-user `userData` directory. Invoicity writes files atomically and requests owner-only file permissions. The files contain plain text, so protection at rest depends on the user account and disk settings.
 
-When you send a message, the app captures the visible spreadsheet area. SmolVLM describes it locally. Nemotron receives that description, a map of fill colors for up to 32 × 32 visible cells, workbook data, and the current selection. The model server listens on `127.0.0.1` and uses a random session key. The app blocks external network requests from the interface, loads the model on first use, and stops it when the app closes.
+For visual questions or sheets with visible fill colors, the app can capture the visible spreadsheet area. SmolVLM describes it locally. Nemotron receives that description, a map of fill colors for up to 32 × 32 visible cells, workbook data, and the current selection. The model server listens on `127.0.0.1` and uses a random session key. The app blocks external network requests from the interface, loads the model on first use, and stops it when the app closes.
 
 Each workbook has its own chat. Under **Chat context**, you can compress the conversation into a Nemotron summary or clear it entirely. Both actions require confirmation. Subsequent requests use the summary and recent messages within an 8,200-character history budget. To remove a workbook and its chat, click the trash icon in the workspace and confirm. Invoicity moves the local copy to the system trash and preserves the file you originally imported.
 

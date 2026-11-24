@@ -44,7 +44,7 @@ try {
     const reader = new BrowserWindow({show:false,webPreferences:{sandbox:true,contextIsolation:true,nodeIntegration:false}})
     const sample = new BrowserWindow({show:false,webPreferences:{sandbox:true}})
     try {
-      await sample.loadURL('data:text/html,<body style="font:48px Arial;background:white;color:black">Invoice 4729</body>')
+      await sample.loadURL('data:text/html,<body style="font:48px Arial;background:white;color:black">Invoice 4729<br>Weekly revenue</body>')
       const pdf = (await sample.webContents.printToPDF({})).toString('base64')
       await reader.loadFile(app.getAppPath() + '/dist/extract.html')
       const png = await reader.webContents.executeJavaScript(`(() => {
@@ -57,6 +57,7 @@ try {
     } finally {reader.destroy(); sample.destroy()}
   })
   for (const text of extracted) assert.match(text,/4729/)
+  assert.match(extracted[0], /4729\s*\n\s*Weekly revenue/)
   console.log('PASS offline PDF and image extraction, both themes and button geometry')
   await cell.fill('In J4 type "platform test"')
   await cell.press('Enter')

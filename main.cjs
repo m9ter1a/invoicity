@@ -182,19 +182,18 @@ handle('importFile', async () => {
   db.save(book)
   return book
 })
+const attachmentTypes = [...sheetTypes, 'txt', 'md', 'pdf', 'docx', 'png', 'jpg', 'jpeg']
 handle('attachment', async () => {
-  const file = await pick([
-    ...sheetTypes,
-    'txt',
-    'md',
-    'pdf',
-    'docx',
-    'png',
-    'jpg',
-    'jpeg',
-  ])
-  if (!file) return null
+  const file = await pick(attachmentTypes)
+  return file ? readAttachment(file) : null
+})
+handle('droppedAttachment', readAttachment)
+async function readAttachment(file) {
   const ext = path.extname(file).slice(1).toLowerCase()
+  if (!attachmentTypes.includes(ext)) throw Error('Unsupported attachment format.')
+  const stat = await fs.stat(file)
+  if (!stat.isFile() || stat.size > 50 * 1024 * 1024)
+    throw Error('Choose a file of 50 MB or smaller.')
   let text
   if (sheetTypes.includes(ext)) {
     const { snapshot } = await importBook(file)
@@ -234,7 +233,7 @@ handle('attachment', async () => {
     partial:
       text.length > 6000 || text.includes('[Only the first 30 pages were read.]'),
   }
-})
+}
 handle('exportFile', async (snap, ext, activeId) => {
   if (!['xlsx', 'xls', 'ods', 'csv', 'tsv', 'docx', 'pdf'].includes(ext))
     throw Error('Unknown file format.')

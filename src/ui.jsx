@@ -387,6 +387,8 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
     [text, setText] = useState(''),
     [dictationState, setDictationState] = useState('idle'),
     [files, setFiles] = useState([]),
+    [draggingFile, setDraggingFile] = useState(false),
+    [readingFile, setReadingFile] = useState(false),
     [busy, setBusy] = useState(false),
     [chatOpen, setChatOpen] = useState(true),
     [modal, setModal] = useState(''),
@@ -469,8 +471,23 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
     grid.current?.book.setName(n)
     dirty()
   }
+  async function addAttachments(dropped) {
+    if (busy || readingFile || dictating || files.length >= 2) return
+    setReadingFile(true)
+    try {
+      const slots = 2 - files.length
+      for (const source of dropped ? dropped.slice(0, slots) : [null]) {
+        const item = source ? await api.attachDroppedFile(source) : await api.attachment()
+        if (item && live.current) {
+          setFiles(previous => [...previous, item].slice(0, 2))
+          messageInput.current?.focus({preventScroll: true})
+        }
+      }
+    } catch (error) { notify(error) }
+    finally { if (live.current) setReadingFile(false) }
+  }
   async function ask(prompt = text, retry = false) {
-    if (activeRequest.current || busy || dictating || !ready || !prompt.trim()) return
+    if (activeRequest.current || busy || readingFile || dictating || !ready || !prompt.trim()) return
     setBusy(true)
     const request = {id: crypto.randomUUID(), stopped: false}
     activeRequest.current = request
@@ -493,7 +510,7 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
         id: request.id,
         question: user.text,
         view: host.current.getBoundingClientRect().toJSON(),
-        context: context(grid.current),
+        context: context(grid.current, old),
         attachments: user.sources || [],
         history: old,
       })
@@ -613,7 +630,23 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
           )}
         </div>
         {chatOpen && (
-          <aside className="copilot" id="invoicity-chat" aria-label="Invoicity chat" style={{ width }}>
+          <aside className="copilot" id="invoicity-chat" aria-label="Invoicity chat" style={{ width }}
+            onDragOver={event => {
+              if (!event.dataTransfer.types.includes('Files')) return
+              event.preventDefault()
+              const canDrop = !busy && !readingFile && !dictating && files.length < 2
+              event.dataTransfer.dropEffect = canDrop ? 'copy' : 'none'
+              setDraggingFile(canDrop)
+            }}
+            onDragLeave={event => {
+              if (!event.currentTarget.contains(event.relatedTarget)) setDraggingFile(false)
+            }}
+            onDrop={event => {
+              if (!event.dataTransfer.types.includes('Files')) return
+              event.preventDefault()
+              setDraggingFile(false)
+              addAttachments(Array.from(event.dataTransfer.files))
+            }}>
             {divider}
             <header>
               <h2>Invoicity Agent</h2>
@@ -670,7 +703,7 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
               {!busy && retryUser && !text && !files.length && (
                 <div className="interruptedRequest">
                   {!failedTurn && <span>The last request was interrupted.</span>}
-                  <ActionButton disabled={!ready || dictating}
+                  <ActionButton disabled={!ready || readingFile || dictating}
                     onClick={() => ask(retryUser.text, true)}>Retry request</ActionButton>
                 </div>
               )}
@@ -681,10 +714,10 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
                 </div>
               )}
             </div>
-            <div className="composeArea">
+            <div className="composeArea" data-file-over={draggingFile || undefined}>
               {files.map((f, i) => (
                 <div className="attachment" key={i}>
-                  <Paperclip size={13} />
+                  <FileText size={16} aria-hidden="true" />
                   {f.name}
                   {f.partial ? ' (excerpt)' : ''}
                   <IconButton
@@ -721,25 +754,15 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
                 <div>
                   <IconButton
                     title="Attach document"
-                    disabled={busy || files.length >= 2}
-                    onClick={async () => {
-                      try {
-                        const f = await api.attachment()
-                        if (f) {
-                          setFiles((prev) => [...prev, f].slice(0, 2))
-                          messageInput.current?.focus({preventScroll: true})
-                        }
-                      } catch (e) {
-                        notify(e)
-                      }
-                    }}
+                    disabled={busy || readingFile || dictating || files.length >= 2}
+                    onClick={() => addAttachments()}
                   >
                     <Paperclip size={17} />
                   </IconButton>
-                  <IconButton title="Chat context" disabled={busy || dictating} onClick={() => setModal('context')}>
+                  <IconButton title="Chat context" disabled={busy || readingFile || dictating} onClick={() => setModal('context')}>
                     <Database size={17} />
                   </IconButton>
-                  <Dictation disabled={busy} atLimit={text.length >= 2500} onState={setDictationState} notify={notify}
+                  <Dictation disabled={busy || readingFile} atLimit={text.length >= 2500} onState={setDictationState} notify={notify}
                     focus={() => messageInput.current?.focus()}
                     append={words => setText(previous =>
                       (previous + (previous && !/\s$/.test(previous) ? ' ' : '') + words).slice(0, 2500))} />
@@ -757,7 +780,7 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
                     className="send"
                     aria-label="Send"
                     disabled={
-                      busy || dictating || !text.trim() || !ready || !model.installed
+                      busy || readingFile || dictating || !text.trim() || !ready || !model.installed
                     }
                     onClick={() => ask()}
                   >

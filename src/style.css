@@ -629,6 +629,18 @@ dialog > p {
   align-items: center;
   overflow-wrap: anywhere;
 }
+.composeArea[data-file-over] .composer {
+  outline: 2px dashed var(--secondary);
+  outline-offset: 3px;
+}
+.attachment {
+  width: fit-content;
+  max-width: 100%;
+  padding: 3px 6px 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 12px;
+}
 .attachment button {
   margin-left: auto;
 }

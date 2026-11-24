@@ -10,7 +10,8 @@ function weeklyStatement(file) {
     if (/^(?:sample statement\s+)?\d+\s*\/\s*\d+$/i.test(line)) continue
     const match = /^(\S+)\s+[A-Za-z]{3}\s+\d{1,2}\s+Week\s+(\d{1,2})\s+([\p{L}][\p{L} .&'’-]*)\s+(-?)\$(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{2}))?$/iu.exec(line)
     if (!match) return null
-    const [, reference, period, region, sign, dollars, cents = '00'] = match
+    const [, reference, period, label, sign, dollars, cents = '00'] = match
+    const region = label.trim().replace(/\s+/g, ' ')
     if (references.has(reference)) return null
     references.add(reference)
     const week = Number(period)
