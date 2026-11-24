@@ -3,13 +3,21 @@
 const functions = {sum:'SUM', total:'SUM', average:'AVERAGE', mean:'AVERAGE', minimum:'MIN', maximum:'MAX', count:'COUNT'}
 const cell = '\\$?[A-Z]{1,3}\\$?[1-9]\\d{0,4}'
 const ref = cell + '(?::' + cell + ')?'
-const expression = new RegExp('^(?:the )?(' + Object.keys(functions).join('|') + ')\\s+(?:of\\s+)?(?:cells?\\s+)?(' +
-  ref + '(?:(?:\\s*,\\s*(?:and\\s+)?|\\s+and\\s+)' + ref + ')*)$', 'i')
+const list = '(' + ref + '(?:(?:\\s*,\\s*(?:and\\s+)?|\\s+and\\s+)' + ref + ')*)'
+const aggregate = '^(?:the )?(' + Object.keys(functions).join('|') + ')\\s+'
+const expression = new RegExp(aggregate + '(?:of\\s+)?(?:cells?\\s+)?' + list + '$', 'i')
+// A metric label can precede an explicitly enumerated set of source cells.
+const named = new RegExp(aggregate +
+  '(?:(?:daily|weekly|monthly|quarterly|annual) )?(?:revenue|sales|income|expenses|costs|receipts)' +
+  '(?: for (?:the )?[a-z][a-z -]{0,48}?)? (?:using (?:cells? )?|across (?:weekly |monthly |quarterly )?totals )' + list + '$', 'i')
 const destination = new RegExp('^(?:write|put|insert) (?:a |the )?formula in (' + cell + ') (?:for|to calculate) (.+)$', 'i')
 function explicitCalculation(question, sheet) {
   const text = question.trim().replace(/[?.!]+$/,'').replace(/^please\s+/i,'')
-  const edit = destination.exec(text)
-  const operands = expression.exec(edit ? edit[2] : text.replace(/^(?:what(?:'s| is)|calculate|compute|find)\s+/i,''))
+  const request = text.replace(/[.?!]\s+(?:answer in (?:the )?chat|the cell should show the calculated result)$/i, '')
+  const edit = destination.exec(request)
+  const metric = edit ? edit[2] : request.replace(/^(?:what(?:'s| is)|calculate|compute|find)\s+/i,'')
+  const filtered = /\b(?:excluding|except|without|only|where|minus|plus|weighted|after|before|above|below|if|and|or)\b/i.test(metric.split(/\s+(?:using|across)\s+/i)[0])
+  const operands = expression.exec(metric) || (!filtered && named.exec(metric))
   if (!operands) return null
   const refs = operands[2].toUpperCase().match(new RegExp(ref,'g'))
   const formula = '=' + functions[operands[1].toLowerCase()] + '(' + refs.join(',') + ')'
