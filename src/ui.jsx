@@ -510,7 +510,7 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
         id: request.id,
         question: user.text,
         view: host.current.getBoundingClientRect().toJSON(),
-        context: context(grid.current, old),
+        context: context(grid.current, old, user.text),
         attachments: user.sources || [],
         history: old,
       })

@@ -1,3 +1,4 @@
+import evidence from './worksheet-evidence.cjs'
 import reportAnalysis from './report-analysis.cjs'
 import {
   createUniver,
@@ -116,7 +117,7 @@ function visibleColors(sheet) {
   }).join(''))
   return { origin: col(startColumn) + (startRow + 1), legend, rows }
 }
-export function context(grid, history = []) {
+export function context(grid, history = [], question = '') {
   const snap = grid.snapshot(),
     active = grid.book.getActiveSheet(),
     selection = grid.book.getActiveRange()?.getA1Notation() || 'A1'
@@ -125,6 +126,7 @@ export function context(grid, history = []) {
     Boolean(activeData.mergeData?.length)
   const result = {
     activeSheetOccupied,
+    focused: evidence.worksheetEvidence(snap, active.getSheetName(), question),
     weeklyReport: reportAnalysis.currentReport(activeData, history),
     workbookName: snap.name,
     active: active.getSheetName(),
