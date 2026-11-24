@@ -18,6 +18,7 @@ import {
   Check,
   Paperclip,
   ArrowUp,
+  Square,
   X,
   FileText,
   LoaderCircle,
@@ -378,6 +379,7 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
     host = useRef(null),
     timer = useRef(),
     live = useRef(true),
+    activeRequest = useRef(null),
     saveChain = useRef(Promise.resolve()),
     body = useRef(null)
   const [name, setName] = useState(initial.name),
@@ -462,11 +464,13 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
     grid.current?.book.setName(n)
     dirty()
   }
-  async function ask(prompt = text) {
-    if (busy || dictating || !ready || !prompt.trim()) return
+  async function ask(prompt = text, retry = false) {
+    if (activeRequest.current || busy || dictating || !ready || !prompt.trim()) return
     setBusy(true)
-    const old = record.current.messages
-    const user = {
+    const request = {id: crypto.randomUUID(), stopped: false}
+    activeRequest.current = request
+    const old = retry ? record.current.messages.slice(0, -1) : record.current.messages
+    const user = retry ? record.current.messages.at(-1) : {
       role: 'user',
       text: prompt.trim(),
       files: files.map((x) => x.name),
@@ -477,16 +481,19 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
     setFiles([])
     try {
       await grid.current.finish()
+      if (request.stopped) throw Error('Request stopped.')
       const base = JSON.stringify(grid.current.snapshot().sheets)
       setActivity({})
       const reply = await api.chat({
+        id: request.id,
         question: user.text,
         view: host.current.getBoundingClientRect().toJSON(),
         context: context(grid.current),
-        attachments: files,
+        attachments: user.sources || [],
         history: old,
       })
       if (!live.current) return
+      if (request.stopped) throw Error('Request stopped.')
       if (reply.calculation) {
         const value = await grid.current.calculate(reply.calculation)
         reply.message = reply.calculation.formula + ' = ' + value.toLocaleString('en-US', {maximumSignificantDigits:15})
@@ -494,6 +501,7 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
       if (reply.actions.length) {
         await grid.current.finish()
         if (!live.current) return
+        if (request.stopped) throw Error('Request stopped.')
         if (JSON.stringify(grid.current.snapshot().sheets) !== base)
           throw Error('The sheet changed during this request. Send the request again to use the current data.')
         applyPlan(grid.current, reply.actions)
@@ -522,11 +530,12 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
     } catch (e) {
       if (live.current) {
         setActivity(null)
-        setHistory([...old, user, { role: 'assistant', text: cleanError(e) }])
+        setHistory([...old, user, { role: 'assistant', text: request.stopped ? 'Request stopped.' : cleanError(e) }])
         setText(user.text)
-        setFiles(files)
+        setFiles(user.sources || [])
       }
     } finally {
+      activeRequest.current = null
       if (live.current) setBusy(false)
     }
   }
@@ -653,6 +662,13 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
                   )}
                 </div>
               ))}
+              {!busy && messages.at(-1)?.role === 'user' && (
+                <div className="interruptedRequest">
+                  <span>The last request was interrupted.</span>
+                  <ActionButton disabled={!ready || dictating || !!text || files.length > 0}
+                    onClick={() => ask(messages.at(-1).text, true)}>Retry request</ActionButton>
+                </div>
+              )}
               {busy && (
                 <div className="thinking">
                   <LoaderCircle size={14} />
@@ -715,7 +731,17 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
                     focus={() => messageInput.current?.focus()}
                     append={words => setText(previous =>
                       (previous + (previous && !/\s$/.test(previous) ? ' ' : '') + words).slice(0, 2500))} />
-                  <button
+                  {busy && activeRequest.current ? (
+                    <button className="send" aria-label="Stop request" title="Stop request"
+                      onClick={() => {
+                        const request = activeRequest.current
+                        if (!request) return
+                        request.stopped = true
+                        api.cancelChat(request.id).catch(notify)
+                      }}>
+                      <Square size={13} fill="currentColor" />
+                    </button>
+                  ) : <button
                     className="send"
                     aria-label="Send"
                     disabled={
@@ -724,7 +750,7 @@ function Editor({ initial, home, flush, notify, model, theme, onTheme }) {
                     onClick={() => ask()}
                   >
                     <ArrowUp size={16} />
-                  </button>
+                  </button>}
                 </div>
               </div>
             </div>

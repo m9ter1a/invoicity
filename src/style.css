@@ -840,3 +840,11 @@ dialog .exportHint { margin: 12px 0 0; }
 @media (prefers-reduced-motion: reduce) {
   .chatLauncher .mark, .chatLauncher[data-dragging=true] .mark { transform: none; transition: none; }
 }
+
+.interruptedRequest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}

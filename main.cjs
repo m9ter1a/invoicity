@@ -136,7 +136,7 @@ handle('save', (book) => db.save(book))
 handle('toggleStar', (id) => db.toggleStar(id))
 handle('audit', (snap) => audit(snap))
 handle('modelStatus', () => model.status())
-handle('chat', async ({ view, ...request }) => {
+async function captureSheet(view) {
   const [width, height] = win.getContentSize()
   if (!view || !['x','y','width','height'].every(k => Number.isFinite(view[k])))
     throw Error('The sheet image is unavailable.')
@@ -147,7 +147,21 @@ handle('chat', async ({ view, ...request }) => {
   const screenshot = await win.webContents.capturePage(rect)
   if (screenshot.isEmpty()) throw Error('Could not capture the current sheet.')
   const image = screenshot.resize({width: Math.min(1000, screenshot.getSize().width)}).toJPEG(86)
-  return model.chat({...request, image: 'data:image/jpeg;base64,' + image.toString('base64')})
+  return 'data:image/jpeg;base64,' + image.toString('base64')
+}
+let runningChat
+handle('cancelChat', id => {
+  if (runningChat?.id === id) runningChat.controller.abort()
+})
+handle('chat', async ({ id, view, ...request }) => {
+  if (runningChat) throw Error('A chat request is already running.')
+  const controller = new AbortController()
+  runningChat = {id, controller}
+  try {
+    return await model.chat({...request, capture: () => captureSheet(view), signal: controller.signal})
+  } finally {
+    runningChat = null
+  }
 })
 async function pick(extensions) {
   const { filePaths } = await dialog.showOpenDialog(win, {

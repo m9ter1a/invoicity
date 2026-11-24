@@ -11,6 +11,7 @@ for (const name of [
   'attachment',
   'audit',
   'chat',
+  'cancelChat',
   'compact',
   'transcribeVoice',
   'cancelVoice',
