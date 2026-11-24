@@ -4,6 +4,14 @@ Invoicity is a free, local AI finance assistant for spreadsheets. Give it a tran
 
 [Download Invoicity](https://invoicity.org/) · [GitHub Releases](https://github.com/m9ter1a/invoicity/releases)
 
+## Worksheet analysis in 0.1.14
+
+Ask about cells beyond the visible preview or on another worksheet. The agent reads the current values and formulas of referenced cells. For example:
+
+- `What formula is in D950?` returns the stored formula and its result when available.
+- `What is the percentage change from 'Prior FY'!C950 to C950?` uses the first cell as the baseline. You can also ask `What percentage of B2 is C2?` for a share.
+- `Look up "INV-950" in column A and return column C.` searches the active worksheet for an exact, case-insensitive match. If the ID occurs more than once, the agent identifies the matching rows and asks which one to use.
+
 ## Install the desktop app
 
 | Platform | How to install |
