@@ -4,7 +4,17 @@ Invoicity is a free, local AI finance assistant for spreadsheets. Give it a tran
 
 [Download Invoicity](https://invoicity.org/) · [GitHub Releases](https://github.com/m9ter1a/invoicity/releases)
 
-## Worksheet analysis in 0.1.14
+## Local document analysis in 0.1.15
+
+Attach a PDF and ask “Find TX-1033 in the PDF” to see its page. Invoicity indexes readable pages locally and sends relevant passages to the agent. For supported transaction reports, totals use every record in the source. Missing pages, duplicate references and ambiguous currencies prevent a verified total.
+
+For a delimited ledger, use a unique reference or ID and an amount with a currency column or a supported currency symbol. Optional columns include region, segment, period, date and transaction type. Examples include “Sum all refunds” and “How much did net revenue for Enterprise in Europe change from Week 1 to Week 2 after refunds?” The same calculations work on an open report with column headings in its first row. Signed refund amounts reduce revenue. Lookup and aggregate answers identify their sources.
+
+The app captures the visible document for visual questions. Ordinary finance questions can use the data directly even when a document contains colored cells. The general planner has operation-specific argument schemas, and the editor checks written values, formulas, number formats, fills and alignment before confirming changes.
+
+Each platform release runs a local end-to-end check with two generated 34-page transaction PDFs, a lookup on the final page, report edits, formula recalculation and chat compression. It reports first-request and repeat-request median and p95 elapsed times for the synthetic cases. Run it locally with `npm run build && node tests/agent-session.mjs` once the local model runtimes are installed.
+
+## Worksheet analysis
 
 Ask about cells beyond the visible preview or on another worksheet. The agent reads the current values and formulas of referenced cells. For example:
 
@@ -44,7 +54,7 @@ The Univer editor supports multiple sheets, formulas, range selection, clipboard
 
 The agent can write values and formulas, change sheet structure, format ranges, sort, and filter. It checks the sheet state before applying edits. Choose **Review this invoice** to check for formula errors, inconsistent line-item totals, missing invoice details, and duplicate invoice numbers for a supplier. Macros, pivot tables, and charts are outside the scope of 0.1, and complex workbooks may look different after export.
 
-The app extracts embedded PDF text directly. For scanned documents and images, it uses Apple Vision on macOS and local Tesseract OCR with English and Russian language data on Windows and Linux. It reads up to the first 30 PDF pages and marks partial extracts. Each request can include up to 9,200 characters of cell data and 6,000 characters per attachment. Select the relevant cells when asking about a large workbook.
+The app extracts embedded PDF text directly. For scanned documents and images, it uses Apple Vision on macOS and local Tesseract OCR with English and Russian language data on Windows and Linux. PDF extraction visits every page and identifies pages without readable text. The prompt includes up to six ranked passages per attachment and up to 9,200 characters of routine cell previews. Select the relevant cells when asking about a large workbook.
 
 ## Privacy and chat memory
 

@@ -21,6 +21,7 @@ const {
   printHTML,
   values,
 } = require('./src/formats.cjs')
+const { documentFile } = require('./src/document-evidence.cjs')
 const { engine } = require('./src/model.cjs')
 const vendor = app.isPackaged
   ? path.join(process.resourcesPath, 'vendor')
@@ -195,7 +196,8 @@ async function readAttachment(file) {
   if (!stat.isFile() || stat.size > 50 * 1024 * 1024)
     throw Error('Choose a file of 50 MB or smaller.')
   let text
-  if (sheetTypes.includes(ext)) {
+  if (['csv','tsv'].includes(ext)) text = await fs.readFile(file, 'utf8')
+  else if (sheetTypes.includes(ext)) {
     const { snapshot } = await importBook(file)
     text = snapshot.sheetOrder
       .map(
@@ -211,10 +213,10 @@ async function readAttachment(file) {
     text = (await require('mammoth').extractRawText({path: file})).value
   } else if (['pdf', 'png', 'jpg', 'jpeg'].includes(ext)) {
     if (process.platform === 'darwin') {
-      text = (await execFile(path.join(vendor, 'extract'), [file], {maxBuffer: 16e6, timeout: 120000})).stdout
+      text = (await execFile(path.join(vendor, 'extract'), [file], {maxBuffer: 16e6, timeout: 600000})).stdout
     } else {
       const reader = new BrowserWindow({show: false, webPreferences: {sandbox: true, nodeIntegration: false, contextIsolation: true}})
-      const timer = setTimeout(() => reader.destroy(), 120000)
+      const timer = setTimeout(() => reader.destroy(), 600000)
       try {
         await reader.loadFile(path.join(__dirname, 'dist', 'extract.html'))
         const encoded = (await fs.readFile(file)).toString('base64')
@@ -226,13 +228,7 @@ async function readAttachment(file) {
     }
   }
   else text = await fs.readFile(file, 'utf8')
-  if (!text.trim()) throw Error('No readable text was found in the file.')
-  return {
-    name: path.basename(file),
-    text: text.slice(0, 6000),
-    partial:
-      text.length > 6000 || text.includes('[Only the first 30 pages were read.]'),
-  }
+  return documentFile(path.basename(file), text, ext === 'pdf')
 }
 handle('exportFile', async (snap, ext, activeId) => {
   if (!['xlsx', 'xls', 'ods', 'csv', 'tsv', 'docx', 'pdf'].includes(ext))
