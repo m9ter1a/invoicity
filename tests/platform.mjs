@@ -75,3 +75,6 @@ try {
   assert.equal(await button('Cancel').evaluate(el=>el.offsetHeight),primary[0])
   console.log('PASS packaged '+process.platform+' local agent and persisted spreadsheet')
 } finally { await app.close() }
+
+// Exercise both native app packaging and the model-backed report workflow.
+execFileSync(process.execPath,['tests/agent-session.mjs'],{stdio:'inherit',env:{...process.env,INVOICITY_BINARY:binary}})
