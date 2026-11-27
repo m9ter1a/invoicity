@@ -1,3 +1,4 @@
+import ledger from './ledger.cjs'
 import evidence from './worksheet-evidence.cjs'
 import reportAnalysis from './report-analysis.cjs'
 import {
@@ -126,6 +127,7 @@ export function context(grid, history = [], question = '') {
     Boolean(activeData.mergeData?.length)
   const result = {
     activeSheetOccupied,
+    ledgerAnswer: ledger.currentLedgerAnswer(activeData, question),
     focused: evidence.worksheetEvidence(snap, active.getSheetName(), question),
     weeklyReport: reportAnalysis.currentReport(activeData, history),
     workbookName: snap.name,
@@ -388,6 +390,16 @@ export function applyPlan(grid, actions) {
               ),
             ),
           )
+          {
+            const actual = range.getCellDatas()
+            check(a.values.every((row, r) => row.every((expected, c) => {
+              const cell = actual[r]?.[c]
+              if (typeof expected === 'string' && expected.startsWith('=')) return cell?.f === expected
+              if (expected === null) return cell?.v == null && !cell?.f
+              if (typeof expected === 'boolean') return cell?.t === 3 && Boolean(cell.v) === expected
+              return cell?.v === expected && !cell.f
+            })), 'The written values could not be verified. The edit was rolled back.')
+          }
           break
         case 'clear':
           range.clearContent()
@@ -423,10 +435,12 @@ export function applyPlan(grid, actions) {
             'Invalid number format.',
           )
           range.setNumberFormat(a.value)
+          check(range.getNumberFormats().every(row => row.every(pattern => pattern === a.value)), 'The number format could not be verified.')
           break
         case 'fill':
           check(/^#[0-9a-f]{6}$/i.test(a.value), 'Invalid color.')
           range.setBackgroundColor(a.value)
+          check(range.getBackgrounds().every(row => row.every(v => v.toLowerCase() === a.value.toLowerCase())), 'The fill could not be verified.')
           break
         case 'align':
           check(
@@ -434,6 +448,7 @@ export function applyPlan(grid, actions) {
             'Invalid alignment.',
           )
           range.setHorizontalAlignment(a.value)
+          check(range.getHorizontalAlignments().every(row => row.every(v => v === a.value)), 'The alignment could not be verified.')
           break
         default:
           throw Error('Unsupported assistant action.')

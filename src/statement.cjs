@@ -1,29 +1,23 @@
+const { readLedger } = require('./ledger.cjs')
 // Only accept a complete, single-currency statement with a recognized header and
 // one receipt per line. Other file layouts go through the general planner.
 function weeklyStatement(file) {
-  if (!file || file.partial || !/\.pdf$/i.test(file.name)) return null
-  const lines = file.text.trim().split(/\r?\n/).map(line => line.trim()).filter(Boolean)
-  const header = lines.findIndex(line => /^reference\s+date\s+period\s+region\s+amount$/i.test(line))
-  if (header < 0 || !lines.slice(0, header).some(line => /\bUSD\b/.test(line))) return null
-  const weeks = new Map(), regions = new Set(), references = new Set()
-  for (const line of lines.slice(header + 1)) {
-    if (/^(?:sample statement\s+)?\d+\s*\/\s*\d+$/i.test(line)) continue
-    const match = /^(\S+)\s+[A-Za-z]{3}\s+\d{1,2}\s+Week\s+(\d{1,2})\s+([\p{L}][\p{L} .&'’-]*)\s+(-?)\$(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{2}))?$/iu.exec(line)
-    if (!match) return null
-    const [, reference, period, label, sign, dollars, cents = '00'] = match
-    const region = label.trim().replace(/\s+/g, ' ')
-    if (references.has(reference)) return null
-    references.add(reference)
-    const week = Number(period)
-    if (!weeks.has(week)) weeks.set(week, new Map())
-    const totals = weeks.get(week)
-    const amount = Number(dollars.replaceAll(',', '') + cents) * (sign ? -1 : 1)
-    const sum = (totals.get(region) || 0) + amount
+  if (!file || file.partial) return null
+  const records = readLedger(file)
+  if (!records) return null
+  const weeks = new Map(), regions = new Set()
+  for (const row of records) {
+    const period = /^(?:week\s+)?(\d{1,2})$/i.exec(row.period || '')
+    if (!period || !row.region || row.currency !== 'USD') return null
+    const week = Number(period[1])
+    if (!weeks.has(week)) weeks.set(week,new Map())
+    const amounts=weeks.get(week)
+    const sum=(amounts.get(row.region) || 0) + row.cents
     if (!Number.isSafeInteger(sum)) return null
-    totals.set(region, sum)
-    regions.add(region)
+    regions.add(row.region)
+    amounts.set(row.region,sum)
   }
-  return weeks.size && regions.size && regions.size <= 24 ? { weeks, regions: [...regions] } : null
+  return weeks.size && regions.size<=24 ? {weeks,regions:[...regions]} : null
 }
 
 // Match complete requests only. Extra instructions (filters, formulas, a destination,
